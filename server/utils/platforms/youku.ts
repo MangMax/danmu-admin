@@ -1,0 +1,184 @@
+import { httpGet, httpPost } from '../request-client';
+import useLogger from "../../composables/useLogger";
+import { Md5 } from 'ts-md5';
+import iconv from 'iconv-lite';
+import convertToDanmakuJson from '../convertToDanmakuJson';
+import type { DanmakuObject, DanmakuJson } from '../../../shared/types/danmuku';
+
+const logger = useLogger();
+
+export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
+  logger.log('开始从本地请求优酷弹幕...', inputUrl);
+  if (!inputUrl) return [];
+
+  const api_video_info = 'https://openapi.youku.com/v2/videos/show.json';
+  const api_danmaku = 'https://acs.youku.com/h5/mopen.youku.danmu.list/1.0/';
+
+  // 手动解析 URL path 来提取 video_id
+  const regex = /^(https?:\/\/[^/]+)(\/[^?#]*)/;
+  const match = inputUrl.match(regex);
+  let path: string[] | undefined;
+  if (match) {
+    path = match[2].split('/').filter(Boolean);
+    path.unshift('');
+    logger.log(path);
+  } else {
+    logger.error('Invalid URL');
+    return [];
+  }
+
+  const video_id = path[path.length - 1].split('.')[0].slice(3);
+  logger.log('video_id:', video_id);
+
+  // 获取页面标题和视频时长
+  let res: any;
+  try {
+    const videoInfoUrl = `${api_video_info}?client_id=53e6cc67237fc59a&video_id=${video_id}&package=com.huawei.hwvplayer.youku&ext=show`;
+    res = await httpGet(videoInfoUrl, {
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36',
+      },
+      allow_redirects: false,
+    });
+  } catch (error) {
+    logger.error('请求视频信息失败:', error);
+    return [];
+  }
+
+  const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+  const title = data.title;
+  const duration = data.duration;
+  logger.log('标题:', title, '时长:', duration);
+
+  // 获取 cna 和 tk_enc
+  let cna: string | undefined;
+  let _m_h5_tk_enc: string | undefined;
+  let _m_h5_tk: string | undefined;
+  try {
+    const cnaUrl = 'https://log.mmstat.com/eg.js';
+    const tkEncUrl = 'https://acs.youku.com/h5/mtop.com.youku.aplatform.weakget/1.0/?jsv=2.5.1&appKey=24679788';
+    const cnaRes = await httpGet(cnaUrl, {
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36',
+      },
+      allow_redirects: false,
+    });
+    const etag = cnaRes.headers['etag'] || cnaRes.headers['Etag'];
+    cna = etag.replace(/^"|"$/g, '');
+
+    let tkEncRes: any;
+    while (!tkEncRes) {
+      tkEncRes = await httpGet(tkEncUrl, {
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36',
+        },
+        allow_redirects: false,
+      });
+    }
+    const tkEncSetCookie = tkEncRes.headers['set-cookie'] || tkEncRes.headers['Set-Cookie'];
+    const tkEncMatch = tkEncSetCookie.match(/_m_h5_tk_enc=([^;]+)/);
+    _m_h5_tk_enc = tkEncMatch ? tkEncMatch[1] : undefined;
+    const tkH5Match = tkEncSetCookie.match(/_m_h5_tk=([^;]+)/);
+    _m_h5_tk = tkH5Match ? tkH5Match[1] : undefined;
+    logger.log('_m_h5_tk_enc:', _m_h5_tk_enc);
+    logger.log('_m_h5_tk:', _m_h5_tk);
+  } catch (error) {
+    logger.error('获取 cna 或 tk_enc 失败:', error);
+    return [];
+  }
+
+  const step = 60;
+  const max_mat = Math.floor(duration / step) + 1;
+  const contents: DanmakuObject[] = [];
+
+  // 使用 iconv-lite 将 UTF-8 文本编码为 latin1 (ISO-8859-1)，然后转为 Base64
+  function latin1Base64(str: string) {
+    // iconv.encode 返回 Buffer，直接 toString('base64') 即可
+    return iconv.encode(str, 'latin1').toString('base64');
+  }
+
+  for (let mat = 0; mat < max_mat; mat++) {
+    const msg: any = {
+      ctime: Date.now(),
+      ctype: 10004,
+      cver: 'v1.0',
+      guid: cna,
+      mat: mat,
+      mcount: 1,
+      pid: 0,
+      sver: '3.1.0',
+      type: 1,
+      vid: video_id,
+    };
+
+    const str = JSON.stringify(msg);
+  const msg_b64encode = latin1Base64(str);
+    msg.msg = msg_b64encode;
+    msg.sign = Md5.hashStr(`${msg_b64encode}MkmC9SoIw6xCkSKHhJ7b5D2r51kBiREr`).toString().toLowerCase();
+
+    const data = JSON.stringify(msg);
+    const t = Date.now();
+    const params: Record<string, any> = {
+      jsv: '2.5.6',
+      appKey: '24679788',
+      t: t,
+      sign: Md5.hashStr([_m_h5_tk!.slice(0, 32), t, '24679788', data].join('&')).toString().toLowerCase(),
+      api: 'mopen.youku.danmu.list',
+      v: '1.0',
+      type: 'originaljson',
+      dataType: 'jsonp',
+      timeout: '20000',
+      jsonpIncPrefix: 'utility',
+    };
+
+    const queryString = Object.keys(params)
+      .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+      .join('&');
+    const url = `${api_danmaku}?${queryString}`;
+    logger.log('piece_url: ', url);
+
+    try {
+      const response = await httpPost(url, `data=${encodeURIComponent(data)}`, {
+        headers: {
+          Cookie: `_m_h5_tk=${_m_h5_tk};_m_h5_tk_enc=${_m_h5_tk_enc};`,
+          Referer: 'https://v.youku.com',
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36',
+        },
+        allow_redirects: false,
+      });
+
+      if (response.data?.data && response.data.data.result) {
+        const result = JSON.parse(response.data.data.result);
+        if (result.code === '-1') continue;
+        const danmus = result.data.result;
+        for (const danmu of danmus) {
+                // 仅填入共享类型 `DanmakuObject` 中定义的字段
+                const content: DanmakuObject = {
+                  timepoint: danmu.playat / 1000,
+                  ct: 1,
+                  color: 16777215,
+                  content: danmu.content || '',
+                };
+                if (danmu.propertis?.color) {
+                  try {
+                    content.color = JSON.parse(danmu.propertis).color;
+                  } catch {
+                    // ignore parse error
+                  }
+                }
+                contents.push(content);
+        }
+      }
+    } catch (error: any) {
+      logger.error('请求失败:', error?.message || error);
+      return [];
+    }
+  }
+
+  logger.log('contents:', contents);
+  return convertToDanmakuJson(contents, 'youku');
+}
