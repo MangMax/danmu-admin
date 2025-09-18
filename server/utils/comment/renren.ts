@@ -1,14 +1,9 @@
 import { httpGet } from '../request-client';
 import useLogger from '../../composables/useLogger';
-import type { DanmakuJson } from '../../../shared/types/danmuku';
-import { AES, enc, lib, mode, pad } from 'crypto-js';
-
-// We'll use crypto-js to perform AES-128-ECB decryption and base64 handling
+import type { DanmakuJson } from '#shared/types';
+import { CryptoUtils } from '../crypto-utils';
 
 const logger = useLogger();
-
-// --- helper functions (sha256/hmac etc) ---
-// simplified: use static-dm endpoint directly to fetch danmu JSON
 
 function parseRRSPPFields(pField: string) {
   const parts = String(pField).split(',');
@@ -75,42 +70,13 @@ async function renrenHttpGet(url: string, { params = {}, headers = {} } = {}) {
   return resp;
 }
 
-function aesDecryptBase64(cipherB64: string, keyStr: string) {
-  try {
-    const key = enc.Utf8.parse(keyStr);
+// 使用统一的加密工具类
+// aesDecryptBase64 已移至 CryptoUtils.aesDecryptBase64
 
-    const cipherParams = lib.CipherParams.create({ ciphertext: enc.Base64.parse(cipherB64) });
-
-    const decrypted = AES.decrypt(cipherParams, key, {
-      mode: mode.ECB,
-      padding: pad.Pkcs7,
-    });
-
-    const text = decrypted.toString(enc.Utf8);
-    return text || null;
-  } catch (e) {
-    logger.warn('aesDecryptBase64 failed', e);
-    return null;
-  }
-}
-
+// 使用统一的自动解码工具
 function autoDecode(anything: any) {
-  const text = typeof anything === 'string' ? anything.trim() : JSON.stringify(anything ?? '');
-  try {
-    return JSON.parse(text);
-  } catch { }
-
   const AES_KEY = '3b744389882a4067';
-  const dec = aesDecryptBase64(text, AES_KEY);
-  if (dec != null) {
-    try {
-      return JSON.parse(dec);
-    } catch {
-      return dec;
-    }
-  }
-
-  return text;
+  return CryptoUtils.autoDecode(anything, AES_KEY);
 }
 
 export async function fetchRenren(episodeId: string): Promise<DanmakuJson[]> {

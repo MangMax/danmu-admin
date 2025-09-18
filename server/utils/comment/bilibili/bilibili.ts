@@ -3,8 +3,10 @@
  * 支持普通投稿视频(av,bv)和番剧视频(ep)
  */
 
-import { httpGet } from '@@/server/utils/request-client';
+import { httpGet } from '../../request-client';
 import useLogger from '~~/server/composables/useLogger';
+import convertToDanmakuJson from '../../convertToDanmakuJson';
+import { utils } from '../../string-utils';
 
 // 日志存储，最多保存 500 行
 const logBuffer: Array<{ timestamp: string; level: string; message: string }> = [];
@@ -19,6 +21,12 @@ const logger = useLogger()
  */
 export async function fetchBilibili(inputUrl: string): Promise<DanmakuJson[]> {
   logger.info("开始从本地请求B站弹幕...", inputUrl);
+
+  // 验证URL格式
+  if (!utils.url.isValidUrl(inputUrl)) {
+    logger.error("Invalid URL format:", inputUrl);
+    return [];
+  }
 
   // 弹幕和视频信息 API 基础地址
   const api_video_info = "https://api.bilibili.com/x/web-interface/view";
@@ -50,13 +58,13 @@ export async function fetchBilibili(inputUrl: string): Promise<DanmakuJson[]> {
       // 如果查询字符串存在，则查找参数 p
       let p = 1; // 默认值为 1
       if (queryString) {
-          const params = queryString.split('&'); // 按 `&` 分割多个参数
-          for (let param of params) {
-            const [key, value] = param.split('='); // 分割每个参数的键值对
-            if (key === 'p') {
-              p = parseInt(value) || 1; // 如果找到 p，使用它的值，否则使用默认值
-            }
+        const params = queryString.split('&'); // 按 `&` 分割多个参数
+        for (let param of params) {
+          const [key, value] = param.split('='); // 分割每个参数的键值对
+          if (key === 'p') {
+            p = parseInt(value) || 1; // 如果找到 p，使用它的值，否则使用默认值
           }
+        }
       }
       logger.info("p: ", p);
 
@@ -74,7 +82,7 @@ export async function fetchBilibili(inputUrl: string): Promise<DanmakuJson[]> {
         },
       });
 
-      const data = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+      const data = utils.string.safeJsonParse(res.data, res.data);
       if (data.code !== 0) {
         logger.error("获取普通投稿视频信息失败:", data.message);
         return [];
@@ -87,7 +95,7 @@ export async function fetchBilibili(inputUrl: string): Promise<DanmakuJson[]> {
       return [];
     }
 
-  // 番剧
+    // 番剧
   } else if (inputUrl.includes("bangumi/") && inputUrl.includes("ep")) {
     try {
       const epid = path.slice(-1)[0].slice(2);
@@ -100,7 +108,7 @@ export async function fetchBilibili(inputUrl: string): Promise<DanmakuJson[]> {
         },
       });
 
-      const data = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+      const data = utils.string.safeJsonParse(res.data, res.data);
       if (data.code !== 0) {
         logger.error("获取番剧视频信息失败:", data.message);
         return [];

@@ -1,7 +1,8 @@
 import useLogger from "../../composables/useLogger";
 import { httpGet } from "../request-client";
 import convertToDanmakuJson from "../convertToDanmakuJson";
-import { DanmakuJson } from "../../../shared/types/danmuku";
+import { DanmakuJson } from "#shared/types";
+import { utils } from '../string-utils';
 
 // 类型定义
 interface MangoVideoInfo {
@@ -23,19 +24,8 @@ interface MangoDanmakuResponse {
   };
 }
 
-// 工具函数
-function time_to_second(time: string): number {
-  const parts = time.split(":").map(Number);
-  let seconds = 0;
-  if (parts.length === 3) {
-    seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-  } else if (parts.length === 2) {
-    seconds = parts[0] * 60 + parts[1];
-  } else {
-    seconds = parts[0] || 0;
-  }
-  return seconds;
-}
+// 使用统一的时间工具函数
+// time_to_second 函数已移至 utils.time.timeToSeconds
 
 /**
  * 获取芒果TV弹幕
@@ -43,6 +33,12 @@ function time_to_second(time: string): number {
 export async function fetchMangoTV(inputUrl: string): Promise<DanmakuJson[]> {
   const logger = useLogger();
   logger.info("开始从本地请求芒果TV弹幕...", inputUrl);
+
+  // 验证URL格式
+  if (!utils.url.isValidUrl(inputUrl)) {
+    logger.error("Invalid URL format:", inputUrl);
+    return [];
+  }
 
   // 弹幕和视频信息 API 基础地址
   const api_video_info = "https://pcweb.api.mgtv.com/video/info";
@@ -80,7 +76,7 @@ export async function fetchMangoTV(inputUrl: string): Promise<DanmakuJson[]> {
     return [];
   }
 
-  const data = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+  const data = utils.string.safeJsonParse(res.data, res.data);
   const videoInfo: MangoVideoInfo = data.data;
   const title = videoInfo.info.videoName;
   const time = videoInfo.info.time;
@@ -88,7 +84,7 @@ export async function fetchMangoTV(inputUrl: string): Promise<DanmakuJson[]> {
 
   // 计算弹幕分段请求
   const step = 60 * 1000; // 每60秒一个分段
-  const end_time = time_to_second(time) * 1000; // 将视频时长转换为毫秒
+  const end_time = utils.time.timeToSeconds(time) * 1000; // 将视频时长转换为毫秒
   const promises: Promise<any>[] = [];
   for (let i = 0; i < end_time; i += step) {
     const danmakuUrl = `${api_danmaku}?vid=${vid}&cid=${cid}&time=${i}`;
@@ -113,7 +109,7 @@ export async function fetchMangoTV(inputUrl: string): Promise<DanmakuJson[]> {
       .map((result) => (result as PromiseFulfilledResult<any>).value.data);
 
     for (const data of datas) {
-      const dataJson: MangoDanmakuResponse = typeof data === "string" ? JSON.parse(data) : data;
+      const dataJson: MangoDanmakuResponse = utils.string.safeJsonParse(data, data);
       if (!dataJson.data.items) continue;
       for (const item of dataJson.data.items) {
         const content: DanmakuObject = {

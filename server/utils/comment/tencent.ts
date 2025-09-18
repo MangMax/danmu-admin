@@ -1,7 +1,8 @@
 import useLogger from "../../composables/useLogger";
 import { httpGet } from "../request-client";
 import convertToDanmakuJson from "../convertToDanmakuJson";
-import { DanmakuJson } from "../../../shared/types/danmuku";
+import { DanmakuJson } from "#shared/types";
+import { utils } from '../string-utils';
 
 // 类型定义
 interface TencentSegmentIndex {
@@ -30,6 +31,12 @@ interface TencentDanmakuSegmentResponse {
 export async function fetchTencentVideo(inputUrl: string): Promise<DanmakuJson[]> {
   const logger = useLogger();
   logger.info("开始从本地请求腾讯视频弹幕...", inputUrl);
+
+  // 验证URL格式
+  if (!utils.url.isValidUrl(inputUrl)) {
+    logger.error("Invalid URL format:", inputUrl);
+    return [];
+  }
 
   // 弹幕 API 基础地址
   const api_danmaku_base = "https://dm.video.qq.com/barrage/base/";
@@ -86,7 +93,7 @@ export async function fetchTencentVideo(inputUrl: string): Promise<DanmakuJson[]
   }
 
   // 先把 res.data 转成 JSON
-  const data: TencentDanmakuBaseResponse = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+  const data: TencentDanmakuBaseResponse = utils.string.safeJsonParse(res.data, res.data);
 
   // 获取弹幕分段数据
   const promises: Promise<any>[] = [];
@@ -113,7 +120,7 @@ export async function fetchTencentVideo(inputUrl: string): Promise<DanmakuJson[]
       .map((result) => (result as PromiseFulfilledResult<any>).value.data);
 
     for (const data of datas) {
-      const parsedData: TencentDanmakuSegmentResponse = typeof data === "string" ? JSON.parse(data) : data;
+      const parsedData: TencentDanmakuSegmentResponse = utils.string.safeJsonParse(data, data);
       for (const item of parsedData.barrage_list) {
         const content: DanmakuObject = {
           timepoint: 0,	// 弹幕发送时间（秒）

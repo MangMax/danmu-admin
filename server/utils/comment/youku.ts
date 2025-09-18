@@ -1,9 +1,9 @@
 import { httpGet, httpPost } from '../request-client';
 import useLogger from "../../composables/useLogger";
-import { Md5 } from 'ts-md5';
-import iconv from 'iconv-lite';
 import convertToDanmakuJson from '../convertToDanmakuJson';
-import type { DanmakuObject, DanmakuJson } from '../../../shared/types/danmuku';
+import type { DanmakuObject, DanmakuJson } from '#shared/types';
+import { CryptoUtils } from '../crypto-utils';
+import { utils } from '../string-utils';
 
 const logger = useLogger();
 
@@ -14,16 +14,22 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
   const api_video_info = 'https://openapi.youku.com/v2/videos/show.json';
   const api_danmaku = 'https://acs.youku.com/h5/mopen.youku.danmu.list/1.0/';
 
-  // 手动解析 URL path 来提取 video_id
+  // 使用工具类验证和解析URL
+  if (!utils.url.isValidUrl(inputUrl)) {
+    logger.error('Invalid URL format:', inputUrl);
+    return [];
+  }
+
+  // 提取 video_id
   const regex = /^(https?:\/\/[^/]+)(\/[^?#]*)/;
   const match = inputUrl.match(regex);
   let path: string[] | undefined;
   if (match) {
     path = match[2].split('/').filter(Boolean);
     path.unshift('');
-    logger.log(path);
+    logger.log('URL path:', path);
   } else {
-    logger.error('Invalid URL');
+    logger.error('Failed to parse URL path');
     return [];
   }
 
@@ -46,7 +52,7 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
     return [];
   }
 
-  const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+  const data = utils.string.safeJsonParse(res.data, res.data);
   const title = data.title;
   const duration = data.duration;
   logger.log('标题:', title, '时长:', duration);
@@ -94,11 +100,7 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
   const max_mat = Math.floor(duration / step) + 1;
   const contents: DanmakuObject[] = [];
 
-  // 使用 iconv-lite 将 UTF-8 文本编码为 latin1 (ISO-8859-1)，然后转为 Base64
-  function latin1Base64(str: string) {
-    // iconv.encode 返回 Buffer，直接 toString('base64') 即可
-    return iconv.encode(str, 'latin1').toString('base64');
-  }
+  // 使用工具类进行编码转换
 
   for (let mat = 0; mat < max_mat; mat++) {
     const msg: any = {
@@ -115,9 +117,9 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
     };
 
     const str = JSON.stringify(msg);
-  const msg_b64encode = latin1Base64(str);
+    const msg_b64encode = CryptoUtils.EncodingConverter.latin1Base64(str);
     msg.msg = msg_b64encode;
-    msg.sign = Md5.hashStr(`${msg_b64encode}MkmC9SoIw6xCkSKHhJ7b5D2r51kBiREr`).toString().toLowerCase();
+    msg.sign = CryptoUtils.md5(`${msg_b64encode}MkmC9SoIw6xCkSKHhJ7b5D2r51kBiREr`);
 
     const data = JSON.stringify(msg);
     const t = Date.now();
@@ -125,7 +127,7 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
       jsv: '2.5.6',
       appKey: '24679788',
       t: t,
-      sign: Md5.hashStr([_m_h5_tk!.slice(0, 32), t, '24679788', data].join('&')).toString().toLowerCase(),
+      sign: CryptoUtils.md5([_m_h5_tk!.slice(0, 32), t, '24679788', data].join('&')),
       api: 'mopen.youku.danmu.list',
       v: '1.0',
       type: 'originaljson',
@@ -134,9 +136,7 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
       jsonpIncPrefix: 'utility',
     };
 
-    const queryString = Object.keys(params)
-      .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
-      .join('&');
+    const queryString = CryptoUtils.buildQueryString(params);
     const url = `${api_danmaku}?${queryString}`;
     logger.log('piece_url: ', url);
 
@@ -156,21 +156,21 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
         if (result.code === '-1') continue;
         const danmus = result.data.result;
         for (const danmu of danmus) {
-                // 仅填入共享类型 `DanmakuObject` 中定义的字段
-                const content: DanmakuObject = {
-                  timepoint: danmu.playat / 1000,
-                  ct: 1,
-                  color: 16777215,
-                  content: danmu.content || '',
-                };
-                if (danmu.propertis?.color) {
-                  try {
-                    content.color = JSON.parse(danmu.propertis).color;
-                  } catch {
-                    // ignore parse error
-                  }
-                }
-                contents.push(content);
+          // 仅填入共享类型 `DanmakuObject` 中定义的字段
+          const content: DanmakuObject = {
+            timepoint: danmu.playat / 1000,
+            ct: 1,
+            color: 16777215,
+            content: danmu.content || '',
+          };
+          if (danmu.propertis?.color) {
+            try {
+              content.color = JSON.parse(danmu.propertis).color;
+            } catch {
+              // ignore parse error
+            }
+          }
+          contents.push(content);
         }
       }
     } catch (error: any) {
