@@ -4,7 +4,8 @@
  */
 
 import { Md5 } from 'ts-md5';
-import { AES, HmacSHA256, enc, lib, mode, pad } from 'crypto-js';
+import CryptoJS from 'crypto-js';
+import CryptoTS from 'crypto-ts';
 import iconv from 'iconv-lite';
 import useLogger from '~~/server/composables/useLogger';
 
@@ -28,19 +29,19 @@ export function md5(message: string): string {
  * 基于 crypto-js 实现
  */
 export function aesEncrypt(text: string, key: string, options?: {
-  mode?: typeof mode.ECB | typeof mode.CBC;
-  padding?: typeof pad.Pkcs7;
+  mode?: typeof CryptoTS.mode.ECB | typeof CryptoTS.mode.CBC;
+  padding?: typeof CryptoTS.pad.PKCS7;
   iv?: string;
 }): string {
   try {
     const {
-      mode: encMode = mode.ECB,
-      padding = pad.Pkcs7,
+      mode: encMode = CryptoTS.mode.ECB,
+      padding = CryptoTS.pad.PKCS7,
       iv
     } = options || {};
 
-    const keyUtf8 = enc.Utf8.parse(key);
-    const textUtf8 = enc.Utf8.parse(text);
+    const keyUtf8 = CryptoTS.enc.Utf8.parse(key);
+    const textUtf8 = CryptoTS.enc.Utf8.parse(text);
 
     const encryptOptions: any = {
       mode: encMode,
@@ -48,11 +49,11 @@ export function aesEncrypt(text: string, key: string, options?: {
     };
 
     // 如果是 CBC 模式且提供了 IV
-    if (encMode === mode.CBC && iv) {
-      encryptOptions.iv = enc.Utf8.parse(iv);
+    if (encMode === CryptoTS.mode.CBC && iv) {
+      encryptOptions.iv = CryptoTS.enc.Utf8.parse(iv);
     }
 
-    const encrypted = AES.encrypt(textUtf8, keyUtf8, encryptOptions);
+    const encrypted = CryptoTS.AES.encrypt(textUtf8, keyUtf8, encryptOptions);
     return encrypted.toString();
   } catch (error) {
     logger.error('AES encryption failed:', error);
@@ -62,21 +63,20 @@ export function aesEncrypt(text: string, key: string, options?: {
 
 /**
  * AES 解密
- * 基于 crypto-js 实现
  */
 export function aesDecrypt(cipherText: string, key: string, options?: {
-  mode?: typeof mode.ECB | typeof mode.CBC;
-  padding?: typeof pad.Pkcs7;
+  mode?: typeof CryptoTS.mode.ECB | typeof CryptoTS.mode.CBC;
+  padding?: typeof CryptoTS.pad.PKCS7;
   iv?: string;
 }): string {
   try {
     const {
-      mode: decMode = mode.ECB,
-      padding = pad.Pkcs7,
+      mode: decMode = CryptoTS.mode.ECB,
+      padding = CryptoTS.pad.PKCS7,
       iv
     } = options || {};
 
-    const keyUtf8 = enc.Utf8.parse(key);
+    const keyUtf8 = CryptoTS.enc.Utf8.parse(key);
 
     const decryptOptions: any = {
       mode: decMode,
@@ -84,12 +84,12 @@ export function aesDecrypt(cipherText: string, key: string, options?: {
     };
 
     // 如果是 CBC 模式且提供了 IV
-    if (decMode === mode.CBC && iv) {
-      decryptOptions.iv = enc.Utf8.parse(iv);
+    if (decMode === CryptoTS.mode.CBC && iv) {
+      decryptOptions.iv = CryptoTS.enc.Utf8.parse(iv);
     }
 
-    const decrypted = AES.decrypt(cipherText, keyUtf8, decryptOptions);
-    return decrypted.toString(enc.Utf8);
+    const decrypted = CryptoTS.AES.decrypt(cipherText, keyUtf8, decryptOptions);
+    return decrypted.toString(CryptoTS.enc.Utf8);
   } catch (error) {
     logger.error('AES decryption failed:', error);
     throw new Error('AES decryption failed');
@@ -102,17 +102,17 @@ export function aesDecrypt(cipherText: string, key: string, options?: {
  */
 export function aesDecryptBase64(cipherB64: string, keyStr: string): string | null {
   try {
-    const key = enc.Utf8.parse(keyStr);
-    const cipherParams = lib.CipherParams.create({
-      ciphertext: enc.Base64.parse(cipherB64)
+    const key = CryptoTS.enc.Utf8.parse(keyStr);
+    const cipherParams = new CryptoTS.lib.CipherParams({
+      ciphertext: CryptoJS.enc.Base64.parse(cipherB64)
     });
 
-    const decrypted = AES.decrypt(cipherParams, key, {
-      mode: mode.ECB,
-      padding: pad.Pkcs7,
+    const decrypted = CryptoTS.AES.decrypt(cipherParams, key, {
+      mode: CryptoTS.mode.ECB,
+      padding: CryptoTS.pad.PKCS7,
     });
 
-    const text = decrypted.toString(enc.Utf8);
+    const text = decrypted.toString(CryptoTS.enc.Utf8);
     return text || null;
   } catch (error) {
     logger.warn('AES Base64 decryption failed:', error);
@@ -122,12 +122,11 @@ export function aesDecryptBase64(cipherB64: string, keyStr: string): string | nu
 
 /**
  * HMAC-SHA256 签名
- * 基于 crypto-js 实现
  */
 export function hmacSha256(message: string, key: string): string {
   try {
-    const hash = HmacSHA256(message, key);
-    return hash.toString(enc.Hex);
+    const hash = CryptoJS.HmacSHA256(message, key);
+    return hash.toString(CryptoTS.enc.Hex);
   } catch (error) {
     logger.error('HMAC-SHA256 failed:', error);
     throw new Error('HMAC-SHA256 failed');
@@ -139,7 +138,7 @@ export function hmacSha256(message: string, key: string): string {
  */
 export function base64Encode(text: string): string {
   try {
-    return enc.Base64.stringify(enc.Utf8.parse(text));
+    return CryptoJS.enc.Base64.stringify(CryptoTS.enc.Utf8.parse(text));
   } catch (error) {
     logger.error('Base64 encoding failed:', error);
     throw new Error('Base64 encoding failed');
@@ -151,7 +150,7 @@ export function base64Encode(text: string): string {
  */
 export function base64Decode(base64Text: string): string {
   try {
-    return enc.Base64.parse(base64Text).toString(enc.Utf8);
+    return CryptoJS.enc.Base64.parse(base64Text).toString(CryptoTS.enc.Utf8);
   } catch (error) {
     logger.error('Base64 decoding failed:', error);
     throw new Error('Base64 decoding failed');
@@ -169,7 +168,6 @@ export class EncodingConverter {
    */
   static latin1Base64(str: string): string {
     try {
-      // iconv.encode 返回 Buffer，直接 toString('base64') 即可
       return iconv.encode(str, 'latin1').toString('base64');
     } catch (error) {
       logger.error('Latin1 Base64 encoding failed:', error);

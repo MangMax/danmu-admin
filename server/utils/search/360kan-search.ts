@@ -6,7 +6,6 @@
 import { httpGet } from '../request-client';
 import useLogger from '~~/server/composables/useLogger';
 import { utils } from '../string-utils';
-import type { AnimeSearchResult, SearchOptions, PlayLink } from '#shared/types';
 
 const logger = useLogger();
 
@@ -16,7 +15,7 @@ const ALLOWED_PLATFORMS = ["qiyi", "bilibili1", "imgo", "youku", "qq"];
 /**
  * 360kan API响应接口
  */
-interface Kan360Response {
+export interface Kan360Response {
   data: {
     longData: {
       rows?: Kan360Anime[];
@@ -24,7 +23,7 @@ interface Kan360Response {
   };
 }
 
-interface Kan360Anime {
+export interface Kan360Anime {
   id: string;
   titleTxt: string;  // 原始代码使用 titleTxt
   cover: string;

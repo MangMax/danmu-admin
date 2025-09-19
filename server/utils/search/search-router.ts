@@ -9,20 +9,13 @@ import { utils } from '../string-utils';
 import { search360Animes } from './360kan-search';
 import { searchVodAnimes } from './vod-search';
 import { searchRenrenAnimes } from './renren-search';
-import type {
-  AnimeSearchResult,
-  SearchOptions,
-  SearchRequest,
-  SearchProvider,
-  EpisodeInfo
-} from '#shared/types';
 
 const logger = useLogger();
 
 /**
  * 搜索配置
  */
-interface SearchConfig {
+export interface SearchConfig {
   providers: SearchProvider[];
   maxResults?: number;
   timeout?: number;

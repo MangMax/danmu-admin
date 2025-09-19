@@ -25,14 +25,14 @@ export interface SearchAnimeResponse {
 
 // 导入需要的类型
 import type { AnimeSearchResult } from './search';
-import type { DanmakuObject } from './danmuku';
+import type { DanmakuJson } from './danmuku';
 
 /**
  * 弹幕响应（特殊格式，不使用通用 ApiResponse）
  */
 export interface CommentResponse {
   count: number;
-  comments: DanmakuObject[];
+  comments: DanmakuJson[];
 }
 
 /**

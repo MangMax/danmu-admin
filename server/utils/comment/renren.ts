@@ -1,6 +1,5 @@
 import { httpGet } from '../request-client';
 import useLogger from '../../composables/useLogger';
-import type { DanmakuJson } from '#shared/types';
 import { CryptoUtils } from '../crypto-utils';
 
 const logger = useLogger();

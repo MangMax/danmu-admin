@@ -1,7 +1,6 @@
 import useLogger from "../../composables/useLogger";
 import { httpGet } from "../request-client";
 import convertToDanmakuJson from "../convertToDanmakuJson";
-import { DanmakuJson } from "#shared/types";
 import { utils } from '../string-utils';
 import { CryptoUtils } from '../crypto-utils';
 

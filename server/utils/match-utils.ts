@@ -3,8 +3,6 @@
  * 提供动画匹配、季度匹配等功能
  */
 
-import type { AnimeSearchResult } from '#shared/types';
-
 /**
  * 转换中文数字为阿拉伯数字（基于原始 danmu.js）
  */

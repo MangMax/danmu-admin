@@ -5,7 +5,6 @@
 
 import useLogger from '~~/server/composables/useLogger';
 import { utils } from '../string-utils';
-import type { DanmakuJson } from '#shared/types';
 
 // 导入各平台弹幕获取函数
 import { fetchBilibili } from './bilibili/bilibili';
@@ -14,6 +13,7 @@ import { fetchTencentVideo } from './tencent';
 import { fetchMangoTV } from './mango';
 import { fetchYouku } from './youku';
 import { fetchRenren } from './renren';
+import { fetchOtherServerWithRetry } from './other-server';
 
 const logger = useLogger();
 
@@ -127,13 +127,14 @@ export function preprocessUrl(url: string, platform?: PlatformName): string {
 
 /**
  * 统一弹幕获取接口
- * 自动识别平台并调用对应的获取函数
+ * 自动识别平台并调用对应的获取函数，失败时使用第三方服务器兜底
  */
 export async function fetchDanmaku(url: string): Promise<{
   success: boolean;
   platform: PlatformName | null;
   data: DanmakuJson[];
   error?: string;
+  fallbackUsed?: boolean;
 }> {
   const startTime = Date.now();
 
@@ -169,25 +170,77 @@ export async function fetchDanmaku(url: string): Promise<{
     );
 
     const duration = Date.now() - startTime;
-    logger.info(`弹幕获取完成 [${platform}]: ${danmakuData.length}条, 耗时: ${duration}ms`);
 
-    return {
-      success: true,
-      platform,
-      data: danmakuData
-    };
+    // 检查是否获取到弹幕数据
+    if (danmakuData && danmakuData.length > 0) {
+      logger.info(`弹幕获取完成 [${platform}]: ${danmakuData.length}条, 耗时: ${duration}ms`);
+      return {
+        success: true,
+        platform,
+        data: danmakuData
+      };
+    } else {
+      // 如果主平台没有获取到弹幕，尝试第三方服务器
+      logger.warn(`平台 [${platform}] 未获取到弹幕，尝试第三方服务器兜底`);
+
+      const fallbackData = await utils.performance.measureAsync(
+        'fetch-fallback',
+        () => fetchOtherServerWithRetry(processedUrl)
+      );
+
+      const totalDuration = Date.now() - startTime;
+
+      if (fallbackData && fallbackData.length > 0) {
+        logger.info(`第三方服务器兜底成功: ${fallbackData.length}条, 总耗时: ${totalDuration}ms`);
+        return {
+          success: true,
+          platform,
+          data: fallbackData,
+          fallbackUsed: true
+        };
+      } else {
+        logger.warn(`第三方服务器也未获取到弹幕, 总耗时: ${totalDuration}ms`);
+        return {
+          success: false,
+          platform,
+          data: [],
+          error: 'No danmaku found from both primary platform and fallback server',
+          fallbackUsed: true
+        };
+      }
+    }
 
   } catch (error: any) {
-    const duration = Date.now() - startTime;
+    const _duration = Date.now() - startTime;
     const errorMessage = error?.message || 'Unknown error occurred';
 
-    logger.error(`弹幕获取失败: ${errorMessage}, 耗时: ${duration}ms`);
+    logger.error(`弹幕获取失败: ${errorMessage}, 尝试第三方服务器兜底`);
 
+    // 主平台失败时，尝试第三方服务器兜底
+    try {
+      const fallbackData = await fetchOtherServerWithRetry(url);
+      const totalDuration = Date.now() - startTime;
+
+      if (fallbackData && fallbackData.length > 0) {
+        logger.info(`第三方服务器兜底成功: ${fallbackData.length}条, 总耗时: ${totalDuration}ms`);
+        return {
+          success: true,
+          platform: null,
+          data: fallbackData,
+          fallbackUsed: true
+        };
+      }
+    } catch (fallbackError: any) {
+      logger.error('第三方服务器兜底也失败了:', fallbackError?.message);
+    }
+
+    const _totalDuration = Date.now() - startTime;
     return {
       success: false,
       platform: null,
       data: [],
-      error: errorMessage
+      error: errorMessage,
+      fallbackUsed: true
     };
   }
 }

@@ -1,9 +1,9 @@
 import { httpGet, httpPost } from '../request-client';
 import useLogger from "../../composables/useLogger";
 import convertToDanmakuJson from '../convertToDanmakuJson';
-import type { DanmakuObject, DanmakuJson } from '#shared/types';
 import { CryptoUtils } from '../crypto-utils';
 import { utils } from '../string-utils';
+import type { DanmakuInputObject, DanmakuJson } from '#shared/types/danmuku';
 
 const logger = useLogger();
 
@@ -98,7 +98,7 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
 
   const step = 60;
   const max_mat = Math.floor(duration / step) + 1;
-  const contents: DanmakuObject[] = [];
+  const contents: DanmakuInputObject[] = [];
 
   // 使用工具类进行编码转换
 
@@ -156,8 +156,8 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
         if (result.code === '-1') continue;
         const danmus = result.data.result;
         for (const danmu of danmus) {
-          // 仅填入共享类型 `DanmakuObject` 中定义的字段
-          const content: DanmakuObject = {
+          // 仅填入共享类型 `DanmakuInputObject` 中定义的字段
+          const content: DanmakuInputObject = {
             timepoint: danmu.playat / 1000,
             ct: 1,
             color: 16777215,

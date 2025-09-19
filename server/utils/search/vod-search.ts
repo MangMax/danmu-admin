@@ -7,20 +7,19 @@ import { httpGet } from '../request-client';
 import useLogger from '~~/server/composables/useLogger';
 import { config } from '../env-config';
 import { utils } from '../string-utils';
-import type { AnimeSearchResult, SearchOptions, PlayLink } from '#shared/types';
 
 const logger = useLogger();
 
 /**
  * VOD API响应接口
  */
-interface VodResponse {
+export interface VodResponse {
   list?: VodAnime[];
   code?: number;
   msg?: string;
 }
 
-interface VodAnime {
+export interface VodAnime {
   vod_id: string;
   vod_name: string;
   vod_pic: string;
@@ -41,7 +40,8 @@ const ALLOWED_PLATFORMS = ["qiyi", "bilibili1", "imgo", "youku", "qq"];
  */
 export async function searchVodAnimes(title: string, options: SearchOptions = {}): Promise<AnimeSearchResult[]> {
   try {
-    const vodServer = config.getVodServer();
+    const envConfig = await config.get();
+    const vodServer = envConfig.vodServer;
 
     if (!vodServer) {
       logger.warn('VOD_SERVER未配置，跳过VOD搜索');
@@ -163,7 +163,8 @@ function parseVodPlaylinks(anime: VodAnime): PlayLink[] {
  */
 export async function getVodAnimeDetails(animeId: string): Promise<VodAnime | null> {
   try {
-    const vodServer = config.getVodServer();
+    const envConfig = await config.get();
+    const vodServer = envConfig.vodServer;
 
     if (!vodServer) {
       throw new Error('VOD_SERVER未配置');

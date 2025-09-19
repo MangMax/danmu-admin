@@ -1,5 +1,5 @@
-// 定义弹幕对象类型（标准对象数组格式）
-export interface DanmakuObject {
+// 定义原始弹幕对象类型（输入格式）
+export interface DanmakuInputObject {
   timepoint: number; // 时间点（秒）
   size?: number; // 大小（可选）
   ct?: number; // 类型（可选，默认为 0）
@@ -16,7 +16,7 @@ export type DanmakuItem = [number, string, string, any, string]; // [timepoint, 
 export type DanmakuContents =
   | string // XML 字符串格式
   | { danmuku: DanmakuItem[] } // Bilibili 对象格式
-  | DanmakuObject[]; // 标准对象数组格式
+  | DanmakuInputObject[]; // 标准对象数组格式
 
 // 定义输出弹幕 JSON 类型
 export interface DanmakuJson {
@@ -31,7 +31,7 @@ export interface BilibiliDanmakuInput {
   m: string; // 弹幕内容
 }
 
-export type DanmakuInputItem = DanmakuObject | BilibiliDanmakuInput; // 统一输入项类型
+export type DanmakuInputItem = DanmakuInputObject | BilibiliDanmakuInput; // 统一输入项类型
 
 export type DanmakuTypeMap = Record<string, number>; // 类型映射表
 

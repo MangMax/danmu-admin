@@ -5,7 +5,6 @@
 
 import { useStorage } from '#imports';
 import useLogger from '~~/server/composables/useLogger';
-import type { AnimeSearchResult, SearchProvider } from '#shared/types/search';
 
 const logger = useLogger();
 

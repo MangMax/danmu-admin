@@ -1,8 +1,8 @@
 import useLogger from "../../composables/useLogger";
 import { httpGet } from "../request-client";
 import convertToDanmakuJson from "../convertToDanmakuJson";
-import { DanmakuJson } from "#shared/types";
 import { utils } from '../string-utils';
+import type { DanmakuInputObject, DanmakuJson } from '#shared/types/danmuku';
 
 // 类型定义
 interface MangoVideoInfo {
@@ -101,7 +101,7 @@ export async function fetchMangoTV(inputUrl: string): Promise<DanmakuJson[]> {
   logger.info("弹幕分段数量:", promises.length);
 
   // 解析弹幕数据
-  const contents: DanmakuObject[] = [];
+  const contents: DanmakuInputObject[] = [];
   try {
     const results = await Promise.allSettled(promises);
     const datas = results
@@ -112,7 +112,7 @@ export async function fetchMangoTV(inputUrl: string): Promise<DanmakuJson[]> {
       const dataJson: MangoDanmakuResponse = utils.string.safeJsonParse(data, data);
       if (!dataJson.data.items) continue;
       for (const item of dataJson.data.items) {
-        const content: DanmakuObject = {
+        const content: DanmakuInputObject = {
           timepoint: 0,	// 弹幕发送时间（秒）
           ct: 1,	// 弹幕类型，1-3 为滚动弹幕、4 为底部、5 为顶端、6 为逆向、7 为精确、8 为高级
           color: 16777215,	//弹幕颜色，RGB 颜色转为十进制后的值，16777215 为白色

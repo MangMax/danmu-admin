@@ -2,41 +2,44 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+  modules: [
+    '@unocss/nuxt',
+    'shadcn-nuxt',
+  ],
+  unocss: {
+    nuxtLayers: true,
+  },
+  shadcn: {
+    componentDir: './app/components/ui'
+  },
+  // Runtime 配置 - 支持环境变量
+  runtimeConfig: {
+    // Private keys (only available on server-side)
+    otherServer: process.env.NUXT_OTHER_SERVER || "https://api.danmu.icu",
+    vodServer: process.env.NUXT_VOD_SERVER || "https://www.caiji.cyou",
+    requestTimeout: parseInt(process.env.NUXT_REQUEST_TIMEOUT || "30000"),
+    maxRetryCount: parseInt(process.env.NUXT_MAX_RETRY_COUNT || "3"),
+
+    // Public keys (exposed to client-side)
+    public: {
+      version: "1.0.3",
+      allowedPlatforms: ["qiyi", "bilibili1", "imgo", "youku", "qq"],
+      maxLogs: parseInt(process.env.NUXT_PUBLIC_MAX_LOGS || "500"),
+      maxAnimes: parseInt(process.env.NUXT_PUBLIC_MAX_ANIMES || "100"),
+    }
+  },
 
   nitro: {
     storage: {
-      // 开发环境使用内存存储
-      dev: {
+      // 统一使用内存存储，开箱即用
+      default: {
         driver: 'memory'
       },
 
-      // 生产环境配置
-      production: {
-        driver: 'redis', // 生产环境推荐使用 Redis
-        // 如果没有 Redis，回退到文件系统
-        fallback: {
-          driver: 'fs',
-          base: './storage'
-        }
-      },
-
-      // 搜索结果缓存
-      search: {
-        driver: 'memory', // 或者 'redis' 用于生产环境
-        ttl: 30 * 60 // 30分钟
-      },
-
-      // 动画详情缓存
-      anime: {
-        driver: 'memory',
-        ttl: 2 * 60 * 60 // 2小时
-      },
-
-      // 日志存储
+      // 日志存储使用文件系统
       logs: {
         driver: 'fs',
-        base: './logs',
-        ttl: 24 * 60 * 60 // 24小时
+        base: './logs'
       }
     }
   }

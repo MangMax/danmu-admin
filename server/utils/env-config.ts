@@ -1,87 +1,117 @@
 /**
  * 环境配置管理模块
- * 跨平台环境适配 (Cloudflare/Vercel/Node)
+ * 基于 Nuxt runtimeConfig 的配置管理
  */
 
 import useLogger from '~~/server/composables/useLogger';
 
 const logger = useLogger();
 
-// 默认配置常量
-export const DEFAULT_CONFIG = {
-  TOKEN: "87654321",
-  OTHER_SERVER: "https://api.danmu.icu",
-  VOD_SERVER: "https://www.caiji.cyou",
-  VERSION: "1.0.2",
-  ALLOWED_PLATFORMS: ["qiyi", "bilibili1", "imgo", "youku", "qq"],
-  REQUEST_TIMEOUT: 30000,
-  MAX_RETRY_COUNT: 3
-} as const;
-
 // 配置类型定义
-export interface EnvironmentConfig {
-  TOKEN: string;
-  OTHER_SERVER: string;
-  VOD_SERVER: string;
-  VERSION: string;
-  ALLOWED_PLATFORMS: readonly string[];
-  REQUEST_TIMEOUT: number;
-  MAX_RETRY_COUNT: number;
+export interface DanmuConfig {
+  otherServer: string;
+  vodServer: string;
+  version: string;
+  allowedPlatforms: readonly string[];
+  requestTimeout: number;
+  maxRetryCount: number;
+  maxLogs: number;
+  maxAnimes: number;
   // 运行时环境信息
-  RUNTIME: 'cloudflare' | 'vercel' | 'node' | 'unknown';
-  NODE_ENV: 'development' | 'production' | 'test';
+  runtime: 'cloudflare' | 'vercel' | 'node' | 'nitro' | 'unknown';
+  nodeEnv: 'development' | 'production' | 'test';
 }
 
 /**
- * 环境配置管理器
+ * 配置管理器 - 基于 Nuxt runtimeConfig
  */
-class EnvironmentConfigManager {
-  private config: EnvironmentConfig;
-  private static instance: EnvironmentConfigManager;
+class DanmuConfigManager {
+  private config: DanmuConfig | null = null;
+  private static instance: DanmuConfigManager;
 
   private constructor() {
-    this.config = this.loadConfig();
-    this.validateConfig();
-    logger.info('Environment configuration loaded:', {
-      runtime: this.config.RUNTIME,
-      nodeEnv: this.config.NODE_ENV,
-      hasCustomToken: this.config.TOKEN !== DEFAULT_CONFIG.TOKEN
-    });
+    // 配置将在第一次使用时懒加载
   }
 
-  public static getInstance(): EnvironmentConfigManager {
-    if (!EnvironmentConfigManager.instance) {
-      EnvironmentConfigManager.instance = new EnvironmentConfigManager();
+  public static getInstance(): DanmuConfigManager {
+    if (!DanmuConfigManager.instance) {
+      DanmuConfigManager.instance = new DanmuConfigManager();
     }
-    return EnvironmentConfigManager.instance;
+    return DanmuConfigManager.instance;
   }
 
   /**
-   * 加载配置
-   * 支持多种环境下的配置获取
+   * 加载配置 - 使用 Nuxt runtimeConfig
    */
-  private loadConfig(): EnvironmentConfig {
-    // 检测运行时环境
-    const runtime = this.detectRuntime();
-    const nodeEnv = this.getNodeEnv();
+  private async loadConfig(): Promise<DanmuConfig> {
+    if (this.config) {
+      return this.config;
+    }
 
+    try {
+      // 获取 Nuxt runtime config
+      const runtimeConfig = useRuntimeConfig();
+
+      // 检测运行时环境
+      const runtime = this.detectRuntime();
+      const nodeEnv = this.getNodeEnv();
+
+      this.config = {
+        otherServer: runtimeConfig.otherServer,
+        vodServer: runtimeConfig.vodServer,
+        version: runtimeConfig.public.version,
+        allowedPlatforms: runtimeConfig.public.allowedPlatforms,
+        requestTimeout: runtimeConfig.requestTimeout,
+        maxRetryCount: runtimeConfig.maxRetryCount,
+        maxLogs: runtimeConfig.public.maxLogs,
+        maxAnimes: runtimeConfig.public.maxAnimes,
+        runtime,
+        nodeEnv
+      };
+
+      this.validateConfig();
+
+      logger.info('Configuration loaded:', {
+        runtime: this.config.runtime,
+        nodeEnv: this.config.nodeEnv,
+        version: this.config.version
+      });
+
+      return this.config;
+    } catch (error) {
+      logger.error('Failed to load runtime config, using fallback:', error);
+      return this.getFallbackConfig();
+    }
+  }
+
+  /**
+   * 获取备用配置（当 runtimeConfig 不可用时）
+   */
+  private getFallbackConfig(): DanmuConfig {
     return {
-      TOKEN: this.resolveToken(),
-      OTHER_SERVER: this.resolveOtherServer(),
-      VOD_SERVER: this.resolveVodServer(),
-      VERSION: DEFAULT_CONFIG.VERSION,
-      ALLOWED_PLATFORMS: DEFAULT_CONFIG.ALLOWED_PLATFORMS,
-      REQUEST_TIMEOUT: this.resolveTimeout(),
-      MAX_RETRY_COUNT: this.resolveRetryCount(),
-      RUNTIME: runtime,
-      NODE_ENV: nodeEnv
+      otherServer: "https://api.danmu.icu",
+      vodServer: "https://www.caiji.cyou",
+      version: "1.0.3",
+      allowedPlatforms: ["qiyi", "bilibili1", "imgo", "youku", "qq"],
+      requestTimeout: 30000,
+      maxRetryCount: 3,
+      maxLogs: 500,
+      maxAnimes: 100,
+      runtime: this.detectRuntime(),
+      nodeEnv: this.getNodeEnv()
     };
   }
 
   /**
    * 检测运行时环境
    */
-  private detectRuntime(): EnvironmentConfig['RUNTIME'] {
+  private detectRuntime(): DanmuConfig['runtime'] {
+    // Nitro/Nuxt 环境检测
+    if (typeof (globalThis as any).__nitro__ !== 'undefined' ||
+      typeof (globalThis as any).$fetch !== 'undefined') {
+      return 'nitro';
+    }
+
     // Cloudflare Workers 环境检测
     if (typeof globalThis.caches !== 'undefined' &&
       typeof globalThis.Request !== 'undefined' &&
@@ -107,108 +137,56 @@ class EnvironmentConfigManager {
   /**
    * 获取 NODE_ENV
    */
-  private getNodeEnv(): EnvironmentConfig['NODE_ENV'] {
-    const env = this.getEnvVar('NODE_ENV') || 'development';
-    if (['development', 'production', 'test'].includes(env)) {
-      return env as EnvironmentConfig['NODE_ENV'];
+  private getNodeEnv(): DanmuConfig['nodeEnv'] {
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV) {
+      const env = process.env.NODE_ENV;
+      if (['development', 'production', 'test'].includes(env)) {
+        return env as DanmuConfig['nodeEnv'];
+      }
     }
     return 'development';
   }
 
   /**
-   * 通用环境变量获取器
-   * 支持 Cloudflare Workers 和 Node.js 环境
+   * 获取当前配置
    */
-  private getEnvVar(key: string, env?: any): string | undefined {
-    // 优先使用传入的 env 对象 (适用于 Cloudflare Workers)
-    if (env && env[key]) {
-      return env[key];
-    }
-
-    // 其次使用 process.env (适用于 Vercel/Node.js)
-    if (typeof process !== 'undefined' && process.env?.[key]) {
-      return process.env[key];
-    }
-
-    return undefined;
+  public async getConfig(): Promise<DanmuConfig> {
+    return await this.loadConfig();
   }
 
   /**
-   * 解析 TOKEN 配置
+   * 获取同步配置（使用缓存的配置）
    */
-  private resolveToken(env?: any): string {
-    return this.getEnvVar('TOKEN', env) || DEFAULT_CONFIG.TOKEN;
-  }
-
-  /**
-   * 解析 OTHER_SERVER 配置
-   */
-  private resolveOtherServer(env?: any): string {
-    return this.getEnvVar('OTHER_SERVER', env) || DEFAULT_CONFIG.OTHER_SERVER;
-  }
-
-  /**
-   * 解析 VOD_SERVER 配置
-   */
-  private resolveVodServer(env?: any): string {
-    return this.getEnvVar('VOD_SERVER', env) || DEFAULT_CONFIG.VOD_SERVER;
-  }
-
-  /**
-   * 解析请求超时配置
-   */
-  private resolveTimeout(env?: any): number {
-    const timeout = this.getEnvVar('REQUEST_TIMEOUT', env);
-    if (timeout) {
-      const parsed = parseInt(timeout, 10);
-      if (!isNaN(parsed) && parsed > 0) {
-        return parsed;
-      }
-    }
-    return DEFAULT_CONFIG.REQUEST_TIMEOUT;
-  }
-
-  /**
-   * 解析重试次数配置
-   */
-  private resolveRetryCount(env?: any): number {
-    const retryCount = this.getEnvVar('MAX_RETRY_COUNT', env);
-    if (retryCount) {
-      const parsed = parseInt(retryCount, 10);
-      if (!isNaN(parsed) && parsed >= 0) {
-        return parsed;
-      }
-    }
-    return DEFAULT_CONFIG.MAX_RETRY_COUNT;
+  public getConfigSync(): DanmuConfig | null {
+    return this.config;
   }
 
   /**
    * 验证配置
    */
   private validateConfig(): void {
+    if (!this.config) return;
+
     const errors: string[] = [];
 
-    // 验证 TOKEN
-    if (!this.config.TOKEN || this.config.TOKEN.length < 4) {
-      errors.push('TOKEN must be at least 4 characters long');
-    }
+    // Token 验证已禁用
 
     // 验证服务器 URL
-    if (!this.isValidUrl(this.config.OTHER_SERVER)) {
-      errors.push('OTHER_SERVER must be a valid URL');
+    if (!this.isValidUrl(this.config.otherServer)) {
+      errors.push('otherServer must be a valid URL');
     }
 
-    if (!this.isValidUrl(this.config.VOD_SERVER)) {
-      errors.push('VOD_SERVER must be a valid URL');
+    if (!this.isValidUrl(this.config.vodServer)) {
+      errors.push('vodServer must be a valid URL');
     }
 
     // 验证数值配置
-    if (this.config.REQUEST_TIMEOUT <= 0) {
-      errors.push('REQUEST_TIMEOUT must be greater than 0');
+    if (this.config.requestTimeout <= 0) {
+      errors.push('requestTimeout must be greater than 0');
     }
 
-    if (this.config.MAX_RETRY_COUNT < 0) {
-      errors.push('MAX_RETRY_COUNT must be non-negative');
+    if (this.config.maxRetryCount < 0) {
+      errors.push('maxRetryCount must be non-negative');
     }
 
     if (errors.length > 0) {
@@ -232,71 +210,39 @@ class EnvironmentConfigManager {
   }
 
   /**
-   * 获取当前配置
-   */
-  public getConfig(): Readonly<EnvironmentConfig> {
-    return { ...this.config };
-  }
-
-  /**
-   * 动态更新配置 (用于运行时从请求中获取环境变量)
-   * 主要用于 Cloudflare Workers
-   */
-  public updateFromEnv(env: any): EnvironmentConfig {
-    const updatedConfig: EnvironmentConfig = {
-      ...this.config,
-      TOKEN: this.resolveToken(env),
-      OTHER_SERVER: this.resolveOtherServer(env),
-      VOD_SERVER: this.resolveVodServer(env),
-      REQUEST_TIMEOUT: this.resolveTimeout(env),
-      MAX_RETRY_COUNT: this.resolveRetryCount(env)
-    };
-
-    // 临时验证更新后的配置
-    const tempConfig = this.config;
-    this.config = updatedConfig;
-    try {
-      this.validateConfig();
-      logger.info('Configuration updated from environment');
-    } catch (error) {
-      // 如果验证失败，恢复原配置
-      this.config = tempConfig;
-      logger.error('Failed to update configuration from environment:', error);
-      throw error;
-    }
-
-    return { ...this.config };
-  }
-
-  /**
    * 获取调试信息
    */
-  public getDebugInfo(): object {
+  public async getDebugInfo(): Promise<object> {
+    const config = await this.getConfig();
     return {
-      runtime: this.config.RUNTIME,
-      nodeEnv: this.config.NODE_ENV,
-      version: this.config.VERSION,
-      hasCustomToken: this.config.TOKEN !== DEFAULT_CONFIG.TOKEN,
-      hasCustomOtherServer: this.config.OTHER_SERVER !== DEFAULT_CONFIG.OTHER_SERVER,
-      hasCustomVodServer: this.config.VOD_SERVER !== DEFAULT_CONFIG.VOD_SERVER,
-      requestTimeout: this.config.REQUEST_TIMEOUT,
-      maxRetryCount: this.config.MAX_RETRY_COUNT,
-      allowedPlatforms: this.config.ALLOWED_PLATFORMS
+      runtime: config.runtime,
+      nodeEnv: config.nodeEnv,
+      version: config.version,
+      tokenAuth: "disabled",
+      hasCustomOtherServer: config.otherServer !== "https://api.danmu.icu",
+      hasCustomVodServer: config.vodServer !== "https://www.caiji.cyou",
+      requestTimeout: config.requestTimeout,
+      maxRetryCount: config.maxRetryCount,
+      allowedPlatforms: config.allowedPlatforms,
+      maxLogs: config.maxLogs,
+      maxAnimes: config.maxAnimes
     };
   }
 
   /**
    * 检查平台是否被允许
    */
-  public isPlatformAllowed(platform: string): boolean {
-    return this.config.ALLOWED_PLATFORMS.includes(platform);
+  public async isPlatformAllowed(platform: string): Promise<boolean> {
+    const config = await this.getConfig();
+    return config.allowedPlatforms.includes(platform);
   }
 
   /**
    * 获取生产环境优化配置
    */
-  public getProductionOptimizations(): object {
-    const isProduction = this.config.NODE_ENV === 'production';
+  public async getProductionOptimizations(): Promise<object> {
+    const config = await this.getConfig();
+    const isProduction = config.nodeEnv === 'production';
 
     return {
       enableDebugLogs: !isProduction,
@@ -310,26 +256,41 @@ class EnvironmentConfigManager {
 }
 
 // 导出单例实例
-export const envConfig = EnvironmentConfigManager.getInstance();
+export const danmuConfig = DanmuConfigManager.getInstance();
 
 // 导出便捷方法
 export const config = {
-  get: () => envConfig.getConfig(),
-  updateFromEnv: (env: any) => envConfig.updateFromEnv(env),
-  getDebugInfo: () => envConfig.getDebugInfo(),
-  isPlatformAllowed: (platform: string) => envConfig.isPlatformAllowed(platform),
-  getProductionOptimizations: () => envConfig.getProductionOptimizations(),
+  get: () => danmuConfig.getConfig(),
+  getDebugInfo: () => danmuConfig.getDebugInfo(),
+  isPlatformAllowed: (platform: string) => danmuConfig.isPlatformAllowed(platform),
+  getProductionOptimizations: () => danmuConfig.getProductionOptimizations(),
 
   // 常用配置的快捷访问器
-  getToken: (env?: any) => envConfig.updateFromEnv(env || {}).TOKEN,
-  getOtherServer: (env?: any) => envConfig.updateFromEnv(env || {}).OTHER_SERVER,
-  getVodServer: (env?: any) => envConfig.updateFromEnv(env || {}).VOD_SERVER,
-  getVersion: () => envConfig.getConfig().VERSION,
-  getRuntime: () => envConfig.getConfig().RUNTIME,
-  isProduction: () => envConfig.getConfig().NODE_ENV === 'production'
+  getToken: async () => "", // Token 认证已禁用
+  getOtherServer: async () => (await danmuConfig.getConfig()).otherServer,
+  getVodServer: async () => (await danmuConfig.getConfig()).vodServer,
+  getVersion: async () => (await danmuConfig.getConfig()).version,
+  getRuntime: async () => (await danmuConfig.getConfig()).runtime,
+  isProduction: async () => (await danmuConfig.getConfig()).nodeEnv === 'production',
+  getAllowedPlatforms: async () => (await danmuConfig.getConfig()).allowedPlatforms,
+  getMaxLogs: async () => (await danmuConfig.getConfig()).maxLogs,
+  getMaxAnimes: async () => (await danmuConfig.getConfig()).maxAnimes,
+  getRequestTimeout: async () => (await danmuConfig.getConfig()).requestTimeout,
+  getMaxRetryCount: async () => (await danmuConfig.getConfig()).maxRetryCount
 };
 
-// 导出默认配置
-export { DEFAULT_CONFIG };
+// 同步版本的便捷方法（使用缓存的配置）
+export const configSync = {
+  get: () => danmuConfig.getConfigSync(),
+  getToken: () => "", // Token 认证已禁用
+  getOtherServer: () => danmuConfig.getConfigSync()?.otherServer,
+  getVodServer: () => danmuConfig.getConfigSync()?.vodServer,
+  getVersion: () => danmuConfig.getConfigSync()?.version,
+  getRuntime: () => danmuConfig.getConfigSync()?.runtime,
+  isProduction: () => danmuConfig.getConfigSync()?.nodeEnv === 'production',
+  getAllowedPlatforms: () => danmuConfig.getConfigSync()?.allowedPlatforms,
+  getMaxLogs: () => danmuConfig.getConfigSync()?.maxLogs,
+  getMaxAnimes: () => danmuConfig.getConfigSync()?.maxAnimes
+};
 
 export default config;

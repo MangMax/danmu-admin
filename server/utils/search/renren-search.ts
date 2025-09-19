@@ -7,12 +7,11 @@
 import { httpGet } from '../request-client';
 import useLogger from '~~/server/composables/useLogger';
 import { CryptoUtils } from '../crypto-utils';
-import type { AnimeSearchResult, SearchOptions, EpisodeInfo } from '#shared/types';
 
 const logger = useLogger();
 
 
-interface RenrenDrama {
+export interface RenrenDrama {
   id: number;
   title: string;
   cover: string;
@@ -26,7 +25,7 @@ interface RenrenDrama {
 /**
  * 搜索锁和节流配置
  */
-interface SearchThrottleConfig {
+export interface SearchThrottleConfig {
   lockRef?: { value: boolean };
   lastRequestTimeRef?: { value: number };
   minInterval?: number;
@@ -35,7 +34,7 @@ interface SearchThrottleConfig {
 /**
  * 人人视频请求签名配置
  */
-interface RenrenRequestConfig {
+export interface RenrenRequestConfig {
   method: 'GET' | 'POST';
   url: string;
   params: Record<string, any>;
@@ -45,14 +44,14 @@ interface RenrenRequestConfig {
 /**
  * 生成设备ID
  */
-function generateDeviceId(): string {
+export function generateDeviceId(): string {
   return (Math.random().toString(36).slice(2)).toUpperCase();
 }
 
 /**
  * 构建排序后的查询字符串
  */
-function sortedQueryString(params: Record<string, any>): string {
+export function sortedQueryString(params: Record<string, any>): string {
   const normalized: Record<string, string> = {};
   for (const [k, v] of Object.entries(params)) {
     if (typeof v === "boolean") normalized[k] = v ? "true" : "false";
@@ -71,7 +70,7 @@ function sortedQueryString(params: Record<string, any>): string {
 /**
  * 获取URL路径名
  */
-function getPathname(url: string): string {
+export function getPathname(url: string): string {
   let pathnameStart = url.indexOf('//') + 2;
   if (pathnameStart === 1) pathnameStart = 0;
   const pathStart = url.indexOf('/', pathnameStart);
@@ -86,7 +85,7 @@ function getPathname(url: string): string {
 /**
  * 生成签名
  */
-function generateSignature(method: string, aliId: string, ct: string, cv: string, timestamp: number, path: string, sortedQuery: string, secret: string): string {
+export function generateSignature(method: string, aliId: string, ct: string, cv: string, timestamp: number, path: string, sortedQuery: string, secret: string): string {
   const signStr = `${method.toUpperCase()}\naliId:${aliId}\nct:${ct}\ncv:${cv}\nt:${timestamp}\n${path}?${sortedQuery}`;
   return CryptoUtils.hmacSha256(signStr, secret);
 }
@@ -94,7 +93,7 @@ function generateSignature(method: string, aliId: string, ct: string, cv: string
 /**
  * 构建签名头
  */
-function buildSignedHeaders(config: RenrenRequestConfig): Record<string, string> {
+export function buildSignedHeaders(config: RenrenRequestConfig): Record<string, string> {
   const ClientProfile = {
     client_type: "web_pc",
     client_version: "1.0.0",

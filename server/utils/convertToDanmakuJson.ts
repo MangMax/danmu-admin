@@ -1,4 +1,12 @@
 import useLogger from "../composables/useLogger";
+import type {
+  DanmakuContents,
+  DanmakuJson,
+  DanmakuInputObject,
+  DanmakuItem,
+  DanmakuTypeMap,
+  BilibiliDanmakuInput
+} from "#shared/types/danmuku";
 
 const logger = useLogger();
 
@@ -13,7 +21,7 @@ export default function convertToDanmakuJson(contents: DanmakuContents, platform
   const typeMap: DanmakuTypeMap = { right: 1, top: 4, bottom: 5 };
 
   // 十六进制转十进制函数
-  const hexToDecimal: HexToDecimalFunction = (hex: string): number => 
+  const hexToDecimal: HexToDecimalFunction = (hex: string): number =>
     (hex ? parseInt(hex.replace("#", ""), 16) : 16777215);
 
   // 统一处理输入为数组
@@ -26,7 +34,7 @@ export default function convertToDanmakuJson(contents: DanmakuContents, platform
     })) as BilibiliDanmakuInput[];
   } else if (contents && Array.isArray((contents as any).danmuku)) {
     // 处理 danmuku 数组，映射为对象格式
-    items = (contents as any).danmuku.map((item: DanmakuItem): DanmakuObject => ({
+    items = (contents as any).danmuku.map((item: DanmakuItem): DanmakuInputObject => ({
       timepoint: item[0],
       ct: typeMap[item[1]] !== undefined ? typeMap[item[1]] : 1,
       color: hexToDecimal(item[2]),
@@ -34,7 +42,7 @@ export default function convertToDanmakuJson(contents: DanmakuContents, platform
     }));
   } else if (Array.isArray(contents)) {
     // 处理标准对象数组
-    items = contents as DanmakuObject[];
+    items = contents as DanmakuInputObject[];
   }
 
   if (!items.length) {
@@ -47,7 +55,7 @@ export default function convertToDanmakuJson(contents: DanmakuContents, platform
 
     if ("timepoint" in item) {
       // 处理对象数组输入
-      const objItem = item as DanmakuObject;
+      const objItem = item as DanmakuInputObject;
       attributes = [
         parseFloat(objItem.timepoint.toString()).toFixed(2),
         objItem.ct || 0,

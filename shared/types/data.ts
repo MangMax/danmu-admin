@@ -94,9 +94,9 @@ export interface DanmakuContent {
 }
 
 /**
- * 转换后的弹幕对象
+ * 转换后的弹幕对象（输出格式）
  */
-export interface DanmakuObject {
+export interface DanmakuOutputObject {
   p: string; // 属性字符串，格式：时间,类型,颜色,[平台]
   m: string; // 弹幕内容
   cid: number; // 弹幕ID

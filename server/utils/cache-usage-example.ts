@@ -4,7 +4,6 @@
  */
 
 import { searchCache, animeCache, logCache, cacheManager } from './storage-cache';
-import type { AnimeSearchResult } from '#shared/types/search';
 
 /**
  * 搜索缓存使用示例
