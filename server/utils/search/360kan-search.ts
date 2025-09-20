@@ -122,7 +122,7 @@ export async function search360Animes(title: string, options: SearchOptions = {}
         bangumiId: anime.id?.toString(),
         animeTitle: `${anime.titleTxt}(${anime.year})`,
         type: `${anime.cat_name} - 360kan`,
-        typeDescription: anime.cat_name,
+        typeDescription: `${anime.cat_name} - 360kan`,
         imageUrl: anime.cover,
         startDate: `${anime.year}-01-01T00:00:00`,
         episodeCount: links.length,

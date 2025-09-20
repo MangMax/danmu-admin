@@ -88,7 +88,7 @@ export async function searchVodAnimes(title: string, options: SearchOptions = {}
         bangumiId: anime.vod_id?.toString(),
         animeTitle: `${anime.vod_name}(${anime.vod_year})`,
         type: `${anime.type_name} - vod`,
-        typeDescription: anime.type_name,
+        typeDescription: `${anime.type_name} - vod`,
         imageUrl: anime.vod_pic,
         startDate: `${anime.vod_year}-01-01T00:00:00`,
         episodeCount: playlinks.length,
