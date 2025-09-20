@@ -139,6 +139,14 @@ export async function fetchTencentVideo(inputUrl: string): Promise<DanmakuJson[]
             } else if (content_style.color && content_style.color !== "ffffff") {
               content.color = parseInt(content_style.color.replace("#", ""), 16);
             }
+
+            if (content_style.position) {
+              if (content_style.position === 2) {
+                content.ct = 5;
+              } else if (content_style.position === 3) {
+                content.ct = 4;
+              }
+            }
           } catch {
             // JSON 解析失败，使用默认白色
           }

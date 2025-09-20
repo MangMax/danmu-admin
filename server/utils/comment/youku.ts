@@ -166,6 +166,13 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
           if (danmu.propertis?.color) {
             try {
               content.color = JSON.parse(danmu.propertis).color;
+              if (danmu.propertis?.pos) {
+                if (JSON.parse(danmu.propertis).pos === 1) {
+                  content.ct = 5;
+                } else if (JSON.parse(danmu.propertis).pos === 2) {
+                  content.ct = 4;
+                }
+              }
             } catch {
               // ignore parse error
             }
