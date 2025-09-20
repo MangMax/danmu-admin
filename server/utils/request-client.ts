@@ -39,11 +39,11 @@ const logger = useLogger()
  * 优化的 HTTP GET 请求
  */
 export async function httpGet<T = any>(
-  url: string, 
+  url: string,
   options: RequestOptions = {}
 ): Promise<HttpResponse<T>> {
   const { headers = {}, params = {}, allow_redirects = true, timeout = 30000, base64Data = false, zlibMode = false } = options;
-  
+
   try {
     // 合并iOS模拟请求头
     const finalHeaders: Record<string, string> = {
@@ -59,7 +59,7 @@ export async function httpGet<T = any>(
       }
     });
 
-    const finalUrl = queryParams.toString() 
+    const finalUrl = queryParams.toString()
       ? `${url}${url.includes('?') ? '&' : '?'}${queryParams.toString()}`
       : url;
 
@@ -69,7 +69,7 @@ export async function httpGet<T = any>(
     // 根据模式选择不同的响应处理方式
     if (base64Data) {
       logger.info(`[Base64模式] 处理URL: ${url}`);
-      
+
       // 使用 $fetch 获取 ArrayBuffer
       response = await $fetch.raw(finalUrl, {
         method: 'GET',
@@ -93,7 +93,7 @@ export async function httpGet<T = any>(
 
     } else if (zlibMode) {
       logger.info(`[Zlib模式] 处理URL: ${url}`);
-      
+
       // 使用 $fetch 获取 ArrayBuffer
       response = await $fetch.raw(finalUrl, {
         method: 'GET',
@@ -142,9 +142,9 @@ export async function httpGet<T = any>(
     if (base64Data || zlibMode) {
       try {
         data = JSON.parse(data);
-      } catch (error) {
+      } catch {
         // 如果解析失败，保留原始数据
-        logger.warn(`[HTTP GET Warning] ${url}:`, error);
+        logger.warn(`[HTTP GET Warning] 尝试解析为JSON失败，返回原始数据: ${url}:`);
       }
     }
 
@@ -158,7 +158,7 @@ export async function httpGet<T = any>(
 
   } catch (error: any) {
     logger.error(`[HTTP GET Error] ${url}:`, error);
-    
+
     // 返回错误响应格式
     return {
       data: null as T,
@@ -177,7 +177,7 @@ export async function httpPost<T = any>(
   options: RequestOptions = {}
 ): Promise<HttpResponse<T>> {
   const { headers = {}, params = {}, allow_redirects = true, timeout = 30000 } = options;
-  
+
   try {
     // 合并iOS模拟请求头
     const finalHeaders: Record<string, string> = {
@@ -202,7 +202,7 @@ export async function httpPost<T = any>(
       }
     });
 
-    const finalUrl = queryParams.toString() 
+    const finalUrl = queryParams.toString()
       ? `${url}${url.includes('?') ? '&' : '?'}${queryParams.toString()}`
       : url;
 
@@ -237,7 +237,7 @@ export async function httpPost<T = any>(
 
   } catch (error: any) {
     logger.error(`[HTTP POST Error] ${url}:`, error);
-    
+
     // 返回错误响应格式
     return {
       data: null as T,
