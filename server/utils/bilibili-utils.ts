@@ -15,14 +15,14 @@ function base64ToBytes(b64: string): Uint8Array {
 
 // 读取变长整数
 function readVarint(bytes: Uint8Array, offset: number): [number, number] {
-  let result = 0n;
-  let shift = 0n;
+  let result = BigInt(0);
+  let shift = BigInt(0);
   let pos = offset;
   while (true) {
     const b = bytes[pos++];
     result |= BigInt(b & 0x7f) << shift;
     if ((b & 0x80) === 0) break;
-    shift += 7n;
+    shift += BigInt(7);
   }
   return [Number(result), pos];
 }

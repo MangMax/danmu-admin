@@ -2,6 +2,23 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+  typescript: {
+    tsConfig: {
+      compilerOptions: {
+        target: 'ES2023',
+        lib: ["ES2023",
+          "DOM",
+          "DOM.Iterable",
+          "ESNext",
+          "dom",
+          "dom.iterable",
+          "webworker"
+        ],
+        module: 'ESNext',
+        moduleResolution: 'bundler',
+      }
+    }
+  },
   modules: [
     '@unocss/nuxt',
     'shadcn-nuxt',
