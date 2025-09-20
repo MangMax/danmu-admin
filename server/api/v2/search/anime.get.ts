@@ -4,6 +4,7 @@
  */
 
 import useLogger from '~~/server/composables/useLogger';
+import { addStorageAnime } from '~~/server/utils/danmu-config';
 
 const logger = useLogger();
 
@@ -46,19 +47,10 @@ export default defineEventHandler(async (event) => {
     // 执行搜索
     const results = await searchAnimes(searchRequest);
 
-    // 将搜索结果添加到存储中以供后续使用
+    // 将搜索结果添加到存储中以供后续使用（必须使用 addStorageAnime 来正确处理 links 中的ID）
     if (results.length > 0) {
-      await addAnimesToStorage(results);
-
-      // 同时为每个动漫的播放链接生成 episode URL 映射
       for (const anime of results) {
-        if (anime.playlinks && anime.playlinks.length > 0) {
-          const episodeUrls = anime.playlinks.map(link => ({
-            url: link.url,
-            title: link.title || `${anime.animeTitle} - ${link.name}`
-          }));
-          addEpisodeUrls(episodeUrls);
-        }
+        await addStorageAnime(anime);
       }
     }
 
@@ -68,7 +60,7 @@ export default defineEventHandler(async (event) => {
     logApiResponse('/api/v2/search/anime', 200, responseTime);
 
     // 返回搜索结果
-    return createSearchAnimeResponse(results, `Found ${results.length} results`);
+    return createSearchAnimeResponse(results, "");
 
   } catch (error: any) {
     logger.error('Search anime failed:', error);

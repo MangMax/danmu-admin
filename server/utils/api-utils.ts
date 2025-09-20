@@ -5,17 +5,19 @@
 
 // import { config } from './env-config'; // 不再需要
 import useLogger from '~~/server/composables/useLogger';
+import type { AnimeSearchResult } from '~~/shared/types/search';
+import type { ApiAnimeInfo, SearchAnimeResponse } from '~~/shared/types/api';
 
 const logger = useLogger();
 
 /**
  * 创建成功响应
  */
-export function createSuccessResponse<T>(data: T, message = ''): ApiResponse<T> {
+export function createSuccessResponse<T>(data: T, _message = ''): ApiResponse<T> {
   return {
     errorCode: 0,
     success: true,
-    errorMessage: message,
+    errorMessage: "",
     data
   };
 }
@@ -39,17 +41,39 @@ export function createErrorResponse(
 }
 
 /**
+ * 将内部搜索结果转换为 API 响应格式
+ * 基于原始 danmu.js 的转换逻辑
+ */
+export function convertToApiAnimeInfo(searchResult: AnimeSearchResult): ApiAnimeInfo {
+  return {
+    animeId: searchResult.animeId,
+    bangumiId: searchResult.bangumiId,
+    animeTitle: searchResult.animeTitle,
+    type: searchResult.type,
+    typeDescription: searchResult.typeDescription,
+    imageUrl: searchResult.imageUrl,
+    startDate: searchResult.startDate,
+    episodeCount: searchResult.episodeCount,
+    rating: searchResult.rating,
+    isFavorited: searchResult.isFavorited
+  };
+}
+
+/**
  * 创建搜索动漫响应
  */
 export function createSearchAnimeResponse(
-  animes: any[],
+  animes: AnimeSearchResult[],
   message = ''
 ): SearchAnimeResponse {
+  // 转换为 API 格式（移除 provider 和 links）
+  const apiAnimes = animes.map(convertToApiAnimeInfo);
+
   return {
     errorCode: 0,
     success: true,
     errorMessage: message,
-    animes
+    animes: apiAnimes
   };
 }
 

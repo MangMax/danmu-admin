@@ -126,10 +126,26 @@ export function aesDecryptBase64(cipherB64: string, keyStr: string): string | nu
 export function hmacSha256(message: string, key: string): string {
   try {
     const hash = CryptoJS.HmacSHA256(message, key);
-    return hash.toString(CryptoTS.enc.Hex);
+    return hash.toString(CryptoJS.enc.Base64);
   } catch (error) {
     logger.error('HMAC-SHA256 failed:', error);
     throw new Error('HMAC-SHA256 failed');
+  }
+}
+
+/**
+ * HMAC-SHA256 签名（兼容原版 danmu.js 的参数顺序）
+ * @param key 密钥
+ * @param message 消息
+ * @returns Base64 格式的签名
+ */
+export function createHmacSha256(key: string, message: string): string {
+  try {
+    const hash = CryptoJS.HmacSHA256(message, key);
+    return hash.toString(CryptoJS.enc.Base64);
+  } catch (error) {
+    logger.error('HMAC-SHA256 (legacy) failed:', error);
+    throw new Error('HMAC-SHA256 (legacy) failed');
   }
 }
 
@@ -269,6 +285,7 @@ export const CryptoUtils = {
   aesDecrypt,
   aesDecryptBase64,
   hmacSha256,
+  createHmacSha256,
   base64Encode,
   base64Decode,
   autoDecode,

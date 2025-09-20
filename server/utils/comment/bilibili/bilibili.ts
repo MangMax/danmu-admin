@@ -7,6 +7,7 @@ import { httpGet } from '../../request-client';
 import useLogger from '~~/server/composables/useLogger';
 import convertToDanmakuJson from '../../convertToDanmakuJson';
 import { utils } from '../../string-utils';
+import { config } from '../../env-config';
 
 // 日志存储，最多保存 500 行
 const logBuffer: Array<{ timestamp: string; level: string; message: string }> = [];
@@ -144,10 +145,14 @@ export async function fetchBilibili(inputUrl: string): Promise<DanmakuJson[]> {
     return [];
   }
 
+  // 获取Bilibili Cookie配置
+  const bilibiliCookie = await config.getBilibiliCookie();
+
   const response = await httpGet(danmakuUrl, {
     headers: {
       "Content-Type": "application/xml",
       "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+      ...(bilibiliCookie && { "Cookie": bilibiliCookie })
     },
   });
 

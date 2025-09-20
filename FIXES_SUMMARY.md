@@ -1,165 +1,66 @@
-# 错误修复总结
+# v1.0.4 修复总结
 
-本文档记录了 `comment/` 和 `search/` 目录中修复的配置相关错误。
+## 🎯 核心更新
 
-## 🔧 修复的问题
+基于原始 danmu.js v1.0.3 到 v1.0.4 的更新，本次修复包含以下重要改进：
 
-### 1. comment/other-server.ts 配置错误
+## ✨ 新增功能
 
-**问题**: 使用了已废弃的 `envConfig` 导入和同步配置调用
+### 1. BILIBILI_COOKIE 环境变量支持
+- **配置**: `NUXT_BILIBILI_COOKIE`
+- **功能**: 支持通过Cookie获取完整B站弹幕
+- **说明**: Cookie需要用户自行通过浏览器或抓包工具获取
 
-**修复前**:
-```typescript
-import { envConfig } from '../env-config';
+### 2. 腾讯视频彩色弹幕支持
+- **问题**: 之前无法获取到彩色弹幕
+- **修复**: 解析 `content_style` 字段中的颜色信息
+- **支持**: 渐变色和基础色，优先使用渐变色第一个颜色
 
-const config = envConfig.getConfig(); // 同步调用
-const requestUrl = `${config.OTHER_SERVER}/?url=${inputUrl}&ac=dm`;
+## 🐛 问题修复
+
+### 3. 360站点错误处理优化
+- **问题**: 360不能访问时影响其他站点搜索结果
+- **修复**: 改为返回空数组而非抛出异常
+- **效果**: 确保其他搜索源正常工作
+
+### 4. 爱奇艺弹幕获取优化
+- **问题**: 弹幕获取不全
+- **修复**: 将step从动态计算改为固定值1
+- **效果**: 现在能获取到完整的弹幕数据
+
+## 📋 技术细节
+
+### 修改的文件
+1. `nuxt.config.ts` - 添加 bilibiliCookie 配置
+2. `server/utils/env-config.ts` - 扩展配置接口
+3. `server/utils/comment/tencent.ts` - 彩色弹幕解析
+4. `server/utils/comment/iqiyi.ts` - 弹幕获取优化
+5. `server/utils/search/360kan-search.ts` - 错误处理改进
+6. `server/utils/comment/bilibili/bilibili.ts` - Cookie支持
+7. `MIGRATION_PLAN.md` - 文档更新
+
+### 版本信息
+- **版本号**: v1.0.3 → v1.0.4
+- **兼容性**: 完全向后兼容
+- **部署**: 现有部署无需修改，新功能为可选配置
+
+## 🔧 配置示例
+
+```bash
+# .env 文件示例
+NUXT_BILIBILI_COOKIE="your_bilibili_cookie_here"
+NUXT_OTHER_SERVER="https://api.danmu.icu"
+NUXT_VOD_SERVER="https://www.caiji.cyou"
 ```
 
-**修复后**:
-```typescript
-import { config } from '../env-config';
+## 📈 效果预期
 
-const envConfig = await config.get(); // 异步调用
-const requestUrl = `${envConfig.otherServer}/?url=${inputUrl}&ac=dm`;
-```
+1. **B站弹幕**: 通过Cookie可获取更完整的弹幕数据
+2. **腾讯视频**: 支持彩色弹幕显示
+3. **爱奇艺**: 获取完整弹幕数据，不再丢失部分内容
+4. **360搜索**: 错误不再影响其他搜索源
+5. **系统稳定性**: 整体错误处理机制更加健壮
 
-### 2. search/vod-search.ts 配置错误
+## 🎉 总结
 
-**问题**: 使用了不存在的同步配置方法
-
-**修复前**:
-```typescript
-const vodServer = config.getVodServer(); // 同步方法不存在
-```
-
-**修复后**:
-```typescript
-const envConfig = await config.get();
-const vodServer = envConfig.vodServer;
-```
-
-### 3. api-utils.ts 兼容性问题
-
-**问题**: Token 验证函数需要同时支持新旧配置系统
-
-**修复前**:
-```typescript
-export function validateToken(event: any, env?: any): boolean {
-  const validToken = config.getToken(env); // 旧的同步方法
-}
-```
-
-**修复后**:
-```typescript
-export async function validateToken(event: any, env?: any): Promise<boolean> {
-  let validToken: string;
-  
-  if (env && env.TOKEN) {
-    // 兼容旧的环境变量方式 (Cloudflare Workers)
-    validToken = env.TOKEN;
-  } else if (typeof process !== 'undefined' && process.env?.TOKEN) {
-    // 兼容 Node.js 环境变量
-    validToken = process.env.TOKEN;
-  } else {
-    // 使用新的配置系统
-    const envConfig = await config.get();
-    validToken = envConfig.token;
-  }
-}
-```
-
-### 4. auth.ts 中间件更新
-
-**问题**: 需要处理异步的配置验证函数
-
-**修复前**:
-```typescript
-if (!validateToken(event, env)) {
-  // ...
-}
-const cleanPath = removeTokenFromPath(url.pathname, env);
-```
-
-**修复后**:
-```typescript
-if (!(await validateToken(event, env))) {
-  // ...
-}
-const cleanPath = await removeTokenFromPath(url.pathname, env);
-```
-
-## 🚀 配置系统改进
-
-### 新的配置调用方式
-
-```typescript
-// ✅ 正确的新方式
-const envConfig = await config.get();
-const token = envConfig.token;
-const otherServer = envConfig.otherServer;
-const vodServer = envConfig.vodServer;
-
-// ❌ 错误的旧方式
-const config = envConfig.getConfig();
-const token = config.getToken();
-```
-
-### 兼容性保证
-
-新的配置系统保持了与原有系统的完全兼容：
-
-1. **环境变量优先级**:
-   - Cloudflare Workers `env.TOKEN`
-   - Node.js `process.env.TOKEN`  
-   - Nuxt runtimeConfig 默认值
-
-2. **异步配置加载**:
-   - 所有配置调用都是异步的
-   - 支持配置验证和错误处理
-
-3. **类型安全**:
-   - 完整的 TypeScript 类型支持
-   - 自动补全和错误检查
-
-## 🧪 测试验证
-
-新增了配置验证测试端点:
-
-```
-GET /api/test/config-validation
-```
-
-该端点验证所有配置功能是否正常工作，包括:
-- 完整配置获取
-- 单项配置获取
-- 错误处理
-- 敏感信息保护
-
-## 📊 修复结果
-
-- ✅ 0 个 lint 错误
-- ✅ 完全向后兼容
-- ✅ 类型安全
-- ✅ 异步配置支持
-- ✅ 多环境支持
-
-## 🔍 验证方法
-
-1. **开发环境测试**:
-   ```bash
-   npm run dev
-   curl http://localhost:3000/api/test/config-validation
-   ```
-
-2. **配置状态检查**:
-   ```bash
-   curl http://localhost:3000/api/config
-   ```
-
-3. **缓存统计验证**:
-   ```bash
-   curl http://localhost:3000/api/cache/stats
-   ```
-
-所有修复都确保了系统的稳定性和向后兼容性，同时提供了更好的配置管理体验。
+这次更新主要聚焦于提升弹幕获取的完整性和准确性，同时增强了系统的稳定性。所有更改都保持了向后兼容性，用户可以无缝升级。

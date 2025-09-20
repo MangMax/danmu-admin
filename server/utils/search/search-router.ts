@@ -8,7 +8,14 @@ import { searchCache } from '../storage-cache';
 import { utils } from '../string-utils';
 import { search360Animes } from './360kan-search';
 import { searchVodAnimes } from './vod-search';
-import { searchRenrenAnimes } from './renren-search';
+import { searchRenrenAnimes, getEpisodes } from './renren-search';
+import type {
+  SearchProvider,
+  SearchRequest,
+  AnimeSearchResult,
+  EpisodeInfo,
+  SearchOptions
+} from '~~/shared/types/search';
 
 const logger = useLogger();
 
@@ -123,11 +130,79 @@ async function searchFromProvider(
       return await searchVodAnimes(keyword, options);
 
     case 'renren':
-      return await searchRenrenAnimes(keyword, episodeInfo, options);
+      // 人人视频需要特殊处理：先搜索，然后转换格式
+      return await searchAndTransformRenren(keyword, episodeInfo, options);
 
     default:
       logger.warn(`未知的搜索提供商: ${provider}`);
       return [];
+  }
+}
+
+/**
+ * 搜索人人视频并转换为统一格式（基于原始 danmu.js 逻辑）
+ */
+async function searchAndTransformRenren(
+  keyword: string,
+  episodeInfo?: EpisodeInfo,
+  options: SearchOptions = {}
+): Promise<AnimeSearchResult[]> {
+  try {
+    // 获取人人视频搜索结果
+    const results = await searchRenrenAnimes(keyword, episodeInfo, options);
+    logger.info(`人人视频搜索结果: ${results.length} 个`);
+
+    const transformedResults: AnimeSearchResult[] = [];
+
+    // 过滤并转换每个结果
+    const filteredResults = results.filter(s => s.title.includes(keyword));
+
+    for (const anime of filteredResults) {
+      try {
+        // 获取集数信息
+        const eps = await getEpisodes(anime.mediaId);
+        logger.debug(`获取到 ${eps.length} 集信息，mediaId: ${anime.mediaId}`);
+
+        // 构建 links（与原始代码一致）
+        const links = [];
+        for (const ep of eps) {
+          links.push({
+            name: String(ep.order), // 转换为字符串以匹配 PlayLink 接口
+            url: ep.sid,
+            title: `【${anime.provider}】${anime.title}(${anime.year}) ${ep.title}`
+          });
+        }
+
+        if (links.length > 0) {
+          // 转换为统一格式（严格与原始 danmu.js 的 transformedAnime 一致）
+          const transformedAnime: AnimeSearchResult = {
+            provider: "renren",
+            animeId: Number(anime.mediaId),
+            bangumiId: String(anime.mediaId),
+            animeTitle: `${anime.title}(${anime.year})`,
+            type: anime.type,
+            typeDescription: anime.type,
+            imageUrl: anime.imageUrl,
+            startDate: `${anime.year}-01-01T00:00:00`,
+            episodeCount: links.length,
+            rating: 0,
+            isFavorited: true,
+            links: links  // 添加播放链接（基于原始 danmu.js）
+          };
+
+          transformedResults.push(transformedAnime);
+        }
+      } catch (error) {
+        logger.warn(`处理人人视频结果失败 (${anime.mediaId}): ${error}`);
+      }
+    }
+
+    logger.info(`人人视频转换完成: ${transformedResults.length} 个有效结果`);
+    return transformedResults;
+
+  } catch (error) {
+    logger.error(`人人视频搜索和转换失败: ${error}`);
+    return [];
   }
 }
 
@@ -151,11 +226,9 @@ function filterSearchResults(
   });
   filtered = Array.from(uniqueMap.values());
 
-  // 季度过滤
+  // 季度过滤（基于标题内容，因为原始结构没有 season 字段）
   if (season) {
     filtered = filtered.filter(result => {
-      if (result.season === season) return true;
-
       const title = result.animeTitle.toLowerCase();
       const keywordLower = keyword.toLowerCase();
 
@@ -209,9 +282,9 @@ function sortSearchResults(results: AnimeSearchResult[], keyword: string): Anime
       return (b.rating || 0) - (a.rating || 0);
     }
 
-    // 年份排序（新的优先）
-    const aYear = parseInt(a.year || '0');
-    const bYear = parseInt(b.year || '0');
+    // 年份排序（新的优先）- 从标题中提取年份
+    const aYear = extractYearFromTitle(a.animeTitle);
+    const bYear = extractYearFromTitle(b.animeTitle);
     if (aYear !== bYear) {
       return bYear - aYear;
     }
@@ -219,6 +292,14 @@ function sortSearchResults(results: AnimeSearchResult[], keyword: string): Anime
     // 集数排序（多的优先）
     return (b.episodeCount || 0) - (a.episodeCount || 0);
   });
+}
+
+/**
+ * 从标题中提取年份
+ */
+function extractYearFromTitle(title: string): number {
+  const yearMatch = title.match(/\((\d{4})\)/);
+  return yearMatch ? parseInt(yearMatch[1]) : 0;
 }
 
 /**

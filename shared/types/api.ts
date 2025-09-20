@@ -14,17 +14,33 @@ export interface ApiResponse<T = any> {
 }
 
 /**
+ * API 返回的动画信息（严格基于原始 danmu.js 的 API 响应格式）
+ * 注意：这个类型不包含 provider 和 links，只用于 API 响应
+ */
+export interface ApiAnimeInfo {
+  animeId: number;
+  bangumiId: string;
+  animeTitle: string;
+  type: string;
+  typeDescription: string;
+  imageUrl: string;
+  startDate: string;
+  episodeCount: number;
+  rating: number;
+  isFavorited: boolean;
+}
+
+/**
  * 搜索动漫响应
  */
 export interface SearchAnimeResponse {
   errorCode: number;
   success: boolean;
   errorMessage: string;
-  animes: AnimeSearchResult[];
+  animes: ApiAnimeInfo[];
 }
 
 // 导入需要的类型
-import type { AnimeSearchResult } from './search';
 import type { DanmakuJson } from './danmuku';
 
 /**

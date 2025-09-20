@@ -1,6 +1,7 @@
 import { mergeConfigs, presetWind3, presetWind4, presetIcons } from 'unocss'
 import presetAnimations from "unocss-preset-animations";
 import { presetShadcn } from "unocss-preset-shadcn";
+import presetCatppuccin from '@catppuccin/unocss';
 import config from './.nuxt/uno.config.mjs'
 
 export default mergeConfigs([config, {
@@ -13,7 +14,12 @@ export default mergeConfigs([config, {
     }),
     presetAnimations(),
     presetShadcn(),
-    presetIcons()
+    presetCatppuccin(),
+    presetIcons({
+      collections: {
+        lucide: () => import('@iconify-json/lucide/icons.json').then(i => i.default),
+      }
+    })
   ],
   content: {
     pipeline: {

@@ -11,6 +11,7 @@ const logger = useLogger();
 export interface DanmuConfig {
   otherServer: string;
   vodServer: string;
+  bilibiliCookie: string;
   version: string;
   allowedPlatforms: readonly string[];
   requestTimeout: number;
@@ -59,6 +60,7 @@ class DanmuConfigManager {
       this.config = {
         otherServer: runtimeConfig.otherServer,
         vodServer: runtimeConfig.vodServer,
+        bilibiliCookie: runtimeConfig.bilibiliCookie || "",
         version: runtimeConfig.public.version,
         allowedPlatforms: runtimeConfig.public.allowedPlatforms,
         requestTimeout: runtimeConfig.requestTimeout,
@@ -91,7 +93,8 @@ class DanmuConfigManager {
     return {
       otherServer: "https://api.danmu.icu",
       vodServer: "https://www.caiji.cyou",
-      version: "1.0.3",
+      bilibiliCookie: "",
+      version: "1.0.4",
       allowedPlatforms: ["qiyi", "bilibili1", "imgo", "youku", "qq"],
       requestTimeout: 30000,
       maxRetryCount: 3,
@@ -269,6 +272,7 @@ export const config = {
   getToken: async () => "", // Token 认证已禁用
   getOtherServer: async () => (await danmuConfig.getConfig()).otherServer,
   getVodServer: async () => (await danmuConfig.getConfig()).vodServer,
+  getBilibiliCookie: async () => (await danmuConfig.getConfig()).bilibiliCookie,
   getVersion: async () => (await danmuConfig.getConfig()).version,
   getRuntime: async () => (await danmuConfig.getConfig()).runtime,
   isProduction: async () => (await danmuConfig.getConfig()).nodeEnv === 'production',
@@ -285,6 +289,7 @@ export const configSync = {
   getToken: () => "", // Token 认证已禁用
   getOtherServer: () => danmuConfig.getConfigSync()?.otherServer,
   getVodServer: () => danmuConfig.getConfigSync()?.vodServer,
+  getBilibiliCookie: () => danmuConfig.getConfigSync()?.bilibiliCookie,
   getVersion: () => danmuConfig.getConfigSync()?.version,
   getRuntime: () => danmuConfig.getConfigSync()?.runtime,
   isProduction: () => danmuConfig.getConfigSync()?.nodeEnv === 'production',

@@ -7,10 +7,13 @@
 import { httpGet } from '../request-client';
 import useLogger from '~~/server/composables/useLogger';
 import { CryptoUtils } from '../crypto-utils';
+import type { EpisodeInfo, SearchOptions } from '~~/shared/types/search';
 
 const logger = useLogger();
 
-
+/**
+ * 人人视频剧集信息
+ */
 export interface RenrenDrama {
   id: number;
   title: string;
@@ -20,6 +23,30 @@ export interface RenrenDrama {
   season?: number;
   description?: string;
   score?: number;
+}
+
+/**
+ * 人人视频剧集详情
+ */
+export interface RenrenDramaDetail {
+  dramaInfo: {
+    id: number;
+    title: string;
+    cover: string;
+    year: number;
+    description?: string;
+    score?: number;
+  };
+  episodeList?: RenrenEpisode[];
+}
+
+/**
+ * 人人视频集数信息
+ */
+export interface RenrenEpisode {
+  sid: string;
+  title: string;
+  order: number;
 }
 
 /**
@@ -39,6 +66,7 @@ export interface RenrenRequestConfig {
   url: string;
   params: Record<string, any>;
   deviceId: string;
+  token?: string;
 }
 
 /**
@@ -68,6 +96,60 @@ export function sortedQueryString(params: Record<string, any>): string {
 }
 
 /**
+ * 更新URL查询字符串（基于原始 danmu.js 的 updateQueryString 逻辑）
+ */
+export function updateQueryString(url: string, params: Record<string, any>): string {
+  // 解析 URL
+  let baseUrl = url;
+  let queryString = '';
+  const hashIndex = url.indexOf('#');
+  let hash = '';
+
+  if (hashIndex !== -1) {
+    baseUrl = url.substring(0, hashIndex);
+    hash = url.substring(hashIndex);
+  }
+
+  const queryIndex = baseUrl.indexOf('?');
+  if (queryIndex !== -1) {
+    queryString = baseUrl.substring(queryIndex + 1);
+    baseUrl = baseUrl.substring(0, queryIndex);
+  }
+
+  // 解析现有查询字符串为对象
+  const queryParams: Record<string, string> = {};
+  if (queryString) {
+    const pairs = queryString.split('&');
+    for (const pair of pairs) {
+      if (pair) {
+        const [key, value = ''] = pair.split('=').map(decodeURIComponent);
+        queryParams[key] = value;
+      }
+    }
+  }
+
+  // 更新参数
+  for (const key in params) {
+    if (Object.prototype.hasOwnProperty.call(params, key)) {
+      queryParams[key] = params[key];
+    }
+  }
+
+  // 构建新的查询字符串
+  const newQuery = [];
+  for (const key in queryParams) {
+    if (Object.prototype.hasOwnProperty.call(queryParams, key)) {
+      newQuery.push(
+        `${encodeURIComponent(key)}=${encodeURIComponent(queryParams[key])}`
+      );
+    }
+  }
+
+  // 拼接最终 URL
+  return baseUrl + (newQuery.length ? '?' + newQuery.join('&') : '') + hash;
+}
+
+/**
  * 获取URL路径名
  */
 export function getPathname(url: string): string {
@@ -87,7 +169,7 @@ export function getPathname(url: string): string {
  */
 export function generateSignature(method: string, aliId: string, ct: string, cv: string, timestamp: number, path: string, sortedQuery: string, secret: string): string {
   const signStr = `${method.toUpperCase()}\naliId:${aliId}\nct:${ct}\ncv:${cv}\nt:${timestamp}\n${path}?${sortedQuery}`;
-  return CryptoUtils.hmacSha256(signStr, secret);
+  return CryptoUtils.createHmacSha256(secret, signStr);
 }
 
 /**
@@ -118,7 +200,7 @@ export function buildSignedHeaders(config: RenrenRequestConfig): Record<string, 
     t: String(nowMs),
     aliId: config.deviceId,
     umid: config.deviceId,
-    token: "",
+    token: config.token || "",
     cv: ClientProfile.client_version,
     ct: ClientProfile.client_type,
     uet: "9",
@@ -131,18 +213,33 @@ export function buildSignedHeaders(config: RenrenRequestConfig): Record<string, 
 }
 
 /**
+ * 人人视频简化搜索结果接口（与原始 danmu.js 保持一致）
+ */
+export interface RenrenSearchResult {
+  provider: string;
+  mediaId: string;
+  title: string;
+  type: string;
+  season: null;
+  year: number;
+  imageUrl: string;
+  episodeCount: number;
+  currentEpisodeIndex: number | null;
+}
+
+/**
  * 人人视频搜索（基于原始 danmu.js 的 renrenSearch 逻辑）
  */
 export async function searchRenrenAnimes(
   keyword: string,
   episodeInfo: EpisodeInfo | null = null,
   _options: SearchOptions = {}
-): Promise<AnimeSearchResult[]> {
+): Promise<RenrenSearchResult[]> {
   try {
     logger.info(`开始搜索人人视频: ${keyword}`);
 
-    // 解析关键词（简化版本，原始代码有更复杂的解析逻辑）
-    const parsedKeyword = { title: keyword, season: null };
+    // 解析关键词（保持与原始代码一致的简化版本）
+    const parsedKeyword = parseSearchKeyword(keyword);
     const searchTitle = parsedKeyword.title;
     const searchSeason = parsedKeyword.season;
 
@@ -171,75 +268,88 @@ export async function searchRenrenAnimes(
 }
 
 /**
+ * 解析搜索关键词（基于原始 danmu.js 逻辑的简化版本）
+ */
+function parseSearchKeyword(keyword: string): { title: string; season: number | null } {
+  // 这里可以根据需要实现更复杂的解析逻辑
+  // 例如：提取季度信息等
+  return { title: keyword, season: null };
+}
+
+/**
  * 执行网络搜索（带节流和锁机制，完全基于原始 danmu.js 逻辑）
  */
 async function performNetworkSearch(
   keyword: string,
   episodeInfo: EpisodeInfo | null = null,
   config: SearchThrottleConfig = {}
-): Promise<AnimeSearchResult[]> {
-  const {
-    lockRef = null,
-    lastRequestTimeRef = { value: 0 },
-    minInterval = 500
-  } = config;
+): Promise<RenrenSearchResult[]> {
+  try {
+    const {
+      lockRef = null,
+      lastRequestTimeRef = { value: 0 },
+      minInterval = 500
+    } = config;
 
-  const url = 'https://api.rrmj.plus/m-station/search/drama';
-  const params = {
-    keywords: keyword,
-    size: 20,
-    order: "match",
-    search_after: "",
-    isExecuteVipActivity: true
-  };
+    const url = 'https://api.rrmj.plus/m-station/search/drama';
+    const params = {
+      keywords: keyword,
+      size: 20,
+      order: "match",
+      search_after: "",
+      isExecuteVipActivity: true
+    };
 
-  // 🔒 锁逻辑（可选）
-  if (lockRef) {
-    while (lockRef.value) await new Promise(r => setTimeout(r, 50));
-    lockRef.value = true;
+    // 🔒 锁逻辑（可选）
+    if (lockRef) {
+      while (lockRef.value) await new Promise(r => setTimeout(r, 50));
+      lockRef.value = true;
+    }
+
+    // ⏱️ 节流逻辑（依赖 lastRequestTimeRef）
+    const now = Date.now();
+    const dt = now - lastRequestTimeRef.value;
+    if (dt < minInterval) await new Promise(r => setTimeout(r, minInterval - dt));
+
+    const resp = await renrenRequest("GET", url, params);
+    lastRequestTimeRef.value = Date.now(); // 更新引用
+
+    if (lockRef) lockRef.value = false;
+
+    if (!resp.data) {
+      logger.warn('人人视频搜索响应为空');
+      return [];
+    }
+
+    const decoded = CryptoUtils.autoDecode(resp.data, '3b744389882a4067');
+    const list = decoded?.data?.searchDramaList || [];
+
+    logger.debug('人人视频搜索原始结果:', list);
+
+    // 根据原始 danmu.js 的返回结构，这里应该返回简化的搜索结果
+    return list.map((item: RenrenDrama) => ({
+      provider: "renren",
+      mediaId: String(item.id),
+      title: String(item.title || "").replace(/<[^>]+>/g, "").replace(/:/g, "："),
+      type: "剧集 - renren",
+      season: null,
+      year: item.year,
+      imageUrl: item.cover,
+      episodeCount: item.episodeTotal,
+      currentEpisodeIndex: episodeInfo?.episode ?? null,
+    }));
+  } catch (error) {
+    logger.error(`人人视频网络搜索失败: ${error}`);
+    return [];
   }
-
-  // ⏱️ 节流逻辑（依赖 lastRequestTimeRef）
-  const now = Date.now();
-  const dt = now - lastRequestTimeRef.value;
-  if (dt < minInterval) await new Promise(r => setTimeout(r, minInterval - dt));
-
-  const resp = await renrenRequest("GET", url, params);
-  lastRequestTimeRef.value = Date.now(); // 更新引用
-
-  if (lockRef) lockRef.value = false;
-
-  if (!resp.data) return [];
-
-  const decoded = CryptoUtils.autoDecode(resp.data, '3b744389882a4067');
-  const list = decoded?.data?.searchDramaList || [];
-
-  return list.map((item: RenrenDrama) => ({
-    provider: "renren",
-    animeId: item.id,
-    bangumiId: String(item.id),
-    animeTitle: String(item.title || "").replace(/<[^>]+>/g, "").replace(/:/g, "："),
-    type: "tv_series",
-    typeDescription: "TV Series",
-    imageUrl: item.cover,
-    startDate: `${item.year}-01-01T00:00:00`,
-    episodeCount: item.episodeTotal || 0,
-    rating: item.score || 0,
-    isFavorited: false,
-    year: String(item.year),
-    season: item.season || null,
-    description: item.description,
-    currentEpisodeIndex: episodeInfo?.episode ?? null,
-    playlinks: [] // 人人视频的播放链接需要单独获取
-  }));
 }
 
 /**
  * 人人视频请求封装（基于原始 danmu.js 的 renrenRequest 逻辑）
  */
-async function renrenRequest(method: 'GET' | 'POST', url: string, params: Record<string, any>) {
+async function renrenRequest(method: 'GET' | 'POST', url: string, params: Record<string, any>, token?: string) {
   const deviceId = generateDeviceId();
-  const headers = buildSignedHeaders({ method, url, params, deviceId });
+  const headers = buildSignedHeaders({ method, url, params, deviceId, token });
   const resp = await httpGet(url + "?" + sortedQueryString(params), {
     headers: headers,
   });
@@ -274,14 +384,14 @@ export async function getInfoFromRenrenUrl(url: string): Promise<{ mediaId: stri
 /**
  * 根据季度过滤搜索结果
  */
-export function filterBySeasonRenren(results: AnimeSearchResult[], searchSeason?: number): AnimeSearchResult[] {
+export function filterBySeasonRenren(results: RenrenSearchResult[], searchSeason?: number): RenrenSearchResult[] {
   if (!searchSeason) return results;
 
   return results.filter(result => {
     if (result.season === searchSeason) return true;
 
     // 如果没有明确的season字段，尝试从标题中判断
-    const title = result.animeTitle.toLowerCase();
+    const title = result.title.toLowerCase();
     if (title.includes(`第${searchSeason}季`) ||
       title.includes(`season ${searchSeason}`) ||
       title.includes(`s${searchSeason}`)) {
@@ -295,22 +405,132 @@ export function filterBySeasonRenren(results: AnimeSearchResult[], searchSeason?
 /**
  * 获取人人视频剧集详情
  */
-export async function getRenrenDramaDetails(dramaId: string): Promise<any> {
+export async function fetchDramaDetail(dramaId: string): Promise<RenrenDramaDetail | null> {
   try {
     logger.info(`获取人人视频剧集详情: ${dramaId}`);
 
-    const url = 'https://api.rrmj.plus/m-station/drama/detail';
-    const params = { dramaId };
+    const url = 'https://api.rrmj.plus/m-station/drama/page';
+    const params = {
+      hsdrOpen: 0,
+      isAgeLimit: 0,
+      dramaId: String(dramaId),
+      hevcOpen: 1
+    };
 
-    const response = await renrenRequest('GET', url, params);
+    const resp = await renrenRequest('GET', url, params);
 
-    if (!response.data) {
-      throw new Error('获取剧集详情失败：响应为空');
+    if (!resp.data) {
+      logger.warn(`获取剧集详情失败：响应为空，dramaId: ${dramaId}`);
+      return null;
     }
 
-    return CryptoUtils.autoDecode(response.data, '3b744389882a4067');
+    const decoded = CryptoUtils.autoDecode(resp.data, '3b744389882a4067');
+    return decoded?.data || null;
   } catch (error) {
     logger.error(`获取人人视频剧集详情失败: ${error}`);
-    throw error;
+    return null;
   }
+}
+
+/**
+ * 获取人人视频集数信息（基于原始 danmu.js 的 getEpisodes 逻辑）
+ */
+export async function getEpisodes(
+  mediaId: string,
+  targetEpisodeIndex: number | null = null
+): Promise<RenrenEpisode[]> {
+  try {
+    const detail = await fetchDramaDetail(mediaId);
+    if (!detail || !detail.episodeList) {
+      logger.warn(`无法获取剧集集数信息: ${mediaId}`);
+      return [];
+    }
+
+    let episodes: RenrenEpisode[] = [];
+    detail.episodeList.forEach((ep: any, idx: number) => {
+      const sid = String(ep.sid || "").trim();
+      if (!sid) return;
+      const title = String(ep.title || `第${String(idx + 1).padStart(2, "0")}集`);
+      episodes.push({ sid, order: idx + 1, title });
+    });
+
+    if (targetEpisodeIndex) {
+      episodes = episodes.filter(e => e.order === targetEpisodeIndex);
+    }
+
+    logger.info(`获取到 ${episodes.length} 集剧集信息，mediaId: ${mediaId}`);
+    return episodes;
+  } catch (error) {
+    logger.error(`获取人人视频集数信息失败: ${error}`);
+    return [];
+  }
+}
+
+/**
+ * 从人人视频URL中获取信息（基于原始 danmu.js 的 getInfoFromUrl 逻辑）
+ */
+export async function getInfoFromUrl(url: string): Promise<RenrenSearchResult | null> {
+  try {
+    const m = String(url).match(/\/v\/(\d+)/);
+    if (!m) {
+      logger.warn(`无法从人人视频URL中提取ID: ${url}`);
+      return null;
+    }
+
+    const dramaId = m[1];
+    const detail = await fetchDramaDetail(dramaId);
+    if (!detail) return null;
+
+    const titleClean = String(detail.dramaInfo.title).replace(/<[^>]+>/g, "").replace(/:/g, "：");
+
+    // 搜索以获取更完整的信息
+    const searchResults = await searchRenrenAnimes(titleClean);
+    const bestMatch = searchResults.find(r => r.mediaId === dramaId);
+
+    if (bestMatch && !bestMatch.episodeCount) {
+      bestMatch.episodeCount = (detail.episodeList?.length || 0);
+    }
+
+    if (bestMatch) return bestMatch;
+
+    // 如果搜索没找到匹配，创建基础信息
+    return {
+      provider: "renren",
+      mediaId: dramaId,
+      title: titleClean,
+      type: "tv_series",
+      season: null,
+      year: detail.dramaInfo.year || new Date().getFullYear(),
+      imageUrl: detail.dramaInfo.cover || "",
+      episodeCount: detail.episodeList?.length || 0,
+      currentEpisodeIndex: null
+    };
+  } catch (error) {
+    logger.error(`从人人视频URL获取信息失败: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * 根据ID获取URL（基于原始 danmu.js 的 getIdFromUrl 逻辑）
+ */
+export function getIdFromUrl(url: string): string | null {
+  const m = String(url).match(/\/v\/\d+\/(\d+)/);
+  return m ? m[1] : null;
+}
+
+/**
+ * 格式化集数ID用于弹幕（基于原始 danmu.js 的 formatEpisodeIdForComments 逻辑）
+ */
+export function formatEpisodeIdForComments(providerEpisodeId: string): string {
+  return String(providerEpisodeId);
+}
+
+/**
+ * 废弃的旧方法，保持向后兼容
+ * @deprecated 使用 fetchDramaDetail 替代
+ */
+export async function getRenrenDramaDetails(dramaId: string): Promise<any> {
+  logger.warn('getRenrenDramaDetails 已废弃，请使用 fetchDramaDetail');
+  return fetchDramaDetail(dramaId);
 }

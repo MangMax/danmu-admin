@@ -85,19 +85,16 @@ export async function searchVodAnimes(title: string, options: SearchOptions = {}
       const result: AnimeSearchResult = {
         provider: 'vod',
         animeId: Number(anime.vod_id),
-        bangumiId: anime.vod_id,
-        animeTitle: `${anime.vod_name}(${anime.vod_year})【${anime.type_name}】from vod`,
-        type: anime.type_name,
+        bangumiId: anime.vod_id?.toString(),
+        animeTitle: `${anime.vod_name}(${anime.vod_year})`,
+        type: `${anime.type_name} - vod`,
         typeDescription: anime.type_name,
         imageUrl: anime.vod_pic,
         startDate: `${anime.vod_year}-01-01T00:00:00`,
         episodeCount: playlinks.length,
         rating: 0, // 原始代码默认使用 0
         isFavorited: true, // 原始代码默认使用 true
-        year: anime.vod_year,
-        description: anime.vod_content,
-        updateInfo: anime.vod_remarks,
-        playlinks
+        links: playlinks  // 添加播放链接（基于原始 danmu.js）
       };
 
       results.push(result);

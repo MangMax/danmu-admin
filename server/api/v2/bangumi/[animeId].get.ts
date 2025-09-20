@@ -66,16 +66,32 @@ export default defineEventHandler(async (event) => {
       episodes: []
     };
 
-    // 生成集数信息
-    const episodeCount = anime.episodeCount || 1;
-    for (let i = 1; i <= Math.min(episodeCount, 200); i++) { // 限制最多200集
-      bangumi.episodes.push({
-        seasonId: `season-${anime.animeId}`,
-        episodeId: anime.animeId + i,
-        episodeTitle: `第${i}集`,
-        episodeNumber: i.toString(),
-        airDate: anime.startDate || new Date().toISOString()
+    // 生成集数信息（基于存储的 links，包含正确的自增ID）
+    if (anime.links && anime.links.length > 0) {
+      // 使用存储的 links，这些已经通过 addEpisode 处理，包含正确的ID
+      anime.links.forEach((link, index) => {
+        if (link.id !== undefined) {
+          bangumi.episodes.push({
+            seasonId: `season-${anime.animeId}`,
+            episodeId: link.id, // 使用存储的正确ID
+            episodeTitle: link.title,
+            episodeNumber: (index + 1).toString(),
+            airDate: anime.startDate || new Date().toISOString()
+          });
+        }
       });
+    } else {
+      // 兜底逻辑：如果没有 links，生成基本的集数信息
+      const episodeCount = anime.episodeCount || 1;
+      for (let i = 1; i <= Math.min(episodeCount, 200); i++) { // 限制最多200集
+        bangumi.episodes.push({
+          seasonId: `season-${anime.animeId}`,
+          episodeId: (anime.animeId || 0) + i, // 这是兜底逻辑，理论上不应该执行
+          episodeTitle: `第${i}集`,
+          episodeNumber: i.toString(),
+          airDate: anime.startDate || new Date().toISOString()
+        });
+      }
     }
 
     logger.info(`Fetched bangumi details for ${anime.animeTitle} with ${bangumi.episodes.length} episodes`);

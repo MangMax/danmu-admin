@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // 在生产环境中隐藏详细错误信息
-    const isProduction = config.isProduction();
+    const isProduction = await config.isProduction();
     if (isProduction && statusCode === 500) {
       errorMessage = 'Internal Server Error';
     }

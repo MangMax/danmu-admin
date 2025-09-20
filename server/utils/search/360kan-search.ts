@@ -119,20 +119,16 @@ export async function search360Animes(title: string, options: SearchOptions = {}
       const result: AnimeSearchResult = {
         provider: '360kan',
         animeId: Number(anime.id),
-        bangumiId: anime.id,
-        animeTitle: `${anime.titleTxt}(${anime.year})【${anime.cat_name}】from 360`,
-        type: anime.cat_name,
+        bangumiId: anime.id?.toString(),
+        animeTitle: `${anime.titleTxt}(${anime.year})`,
+        type: `${anime.cat_name} - 360kan`,
         typeDescription: anime.cat_name,
         imageUrl: anime.cover,
         startDate: `${anime.year}-01-01T00:00:00`,
         episodeCount: links.length,
         rating: 0, // 原始代码默认使用 0
         isFavorited: true, // 原始代码默认使用 true
-        year: anime.year,
-        area: anime.area,
-        description: anime.msg,
-        updateInfo: anime.upinfo,
-        playlinks: links
+        links: links  // 添加播放链接（基于原始 danmu.js）
       };
 
       results.push(result);
@@ -141,7 +137,7 @@ export async function search360Animes(title: string, options: SearchOptions = {}
     return results;
   } catch (error) {
     logger.error(`360kan搜索失败: ${error}`);
-    throw error;
+    return [];
   }
 }
 
@@ -190,7 +186,7 @@ export async function get360Zongyi(entId: string, site: string, year: string): P
 
   } catch (error) {
     logger.error(`获取360kan综艺详情失败: ${error}`);
-    throw error;
+    return [];
   }
 }
 

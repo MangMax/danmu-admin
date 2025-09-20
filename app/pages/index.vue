@@ -1,15 +1,15 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-background">
     <!-- 头部 -->
-    <header class="bg-white shadow-sm border-b">
+    <header class="bg-card shadow-sm border-b">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center py-6">
           <div>
-            <h1 class="text-3xl font-bold text-gray-900">弹幕API测试中心</h1>
-            <p class="text-sm text-gray-600 mt-1">测试所有弹幕API端点的功能</p>
+            <h1 class="text-3xl font-bold text-foreground">弹幕API测试中心</h1>
+            <p class="text-sm text-muted-foreground mt-1">测试所有弹幕API端点的功能</p>
           </div>
-          <div class="flex items-center space-x-4">
-            <span class="text-sm text-gray-500">Danmu Admin v2.0</span>
+          <div class="flex items-center gap-4">
+            <Badge variant="secondary" class="text-sm">Danmu Admin v2.0</Badge>
           </div>
         </div>
       </div>
@@ -28,12 +28,14 @@
       </div>
 
       <!-- 缓存统计 -->
-      <div class="mb-8">
-        <div class="bg-white rounded-lg shadow-sm border p-6">
-          <h2 class="text-xl font-bold text-gray-800 mb-4">缓存统计</h2>
+      <Card class="mb-8">
+        <CardHeader>
+          <CardTitle>缓存统计</CardTitle>
+        </CardHeader>
+        <CardContent>
           <CacheStats />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       <!-- 缓存数据详情 -->
       <div class="mb-8">
@@ -43,34 +45,22 @@
       <!-- API测试组件网格 -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <!-- 搜索动漫 -->
-        <div class="bg-white rounded-lg shadow-sm border">
-          <SearchAnimeTest />
-        </div>
+        <SearchAnimeTest />
 
         <!-- 搜索集数 -->
-        <div class="bg-white rounded-lg shadow-sm border">
-          <SearchEpisodesTest />
-        </div>
+        <SearchEpisodesTest />
 
         <!-- 匹配动漫 -->
-        <div class="bg-white rounded-lg shadow-sm border">
-          <MatchAnimeTest />
-        </div>
+        <MatchAnimeTest />
 
         <!-- 番剧详情 -->
-        <div class="bg-white rounded-lg shadow-sm border">
-          <BangumiDetailTest />
-        </div>
+        <BangumiDetailTest />
 
         <!-- 弹幕获取 -->
-        <div class="bg-white rounded-lg shadow-sm border">
-          <CommentTest />
-        </div>
+        <CommentTest />
 
         <!-- 日志查看 -->
-        <div class="bg-white rounded-lg shadow-sm border">
-          <LogsTest />
-        </div>
+        <LogsTest />
       </div>
     </main>
 
@@ -92,6 +82,9 @@
 </template>
 
 <script setup>
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
 // 设置页面标题
 useHead({
   title: '弹幕API测试中心',

@@ -147,7 +147,7 @@ export async function fetchIqiyi(inputUrl: string): Promise<DanmakuJson[]> {
       const danmaku = extract(xml, "content");
       const showTime = extract(xml, "showTime");
       const color = extract(xml, "color");
-      const step = Math.ceil(danmaku.length * datas.length / 10000);
+      const step = 1;
 
       for (let i = 0; i < danmaku.length; i += step) {
         const content: IqiyiDanmakuItem = {

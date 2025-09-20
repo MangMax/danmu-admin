@@ -11,6 +11,7 @@ export type SearchProvider = '360kan' | 'vod' | 'renren';
  * 播放链接
  */
 export interface PlayLink {
+  id?: number;  // 自增ID（基于原始 danmu.js 的 addEpisode 逻辑）
   name: string;
   url: string;
   title: string;
@@ -19,7 +20,7 @@ export interface PlayLink {
 }
 
 /**
- * 动画搜索结果（基于原始 danmu.js）
+ * 动画搜索结果（严格基于原始 danmu.js 的 transformedAnime 结构）
  */
 export interface AnimeSearchResult {
   provider: SearchProvider;
@@ -33,13 +34,7 @@ export interface AnimeSearchResult {
   episodeCount: number;
   rating: number;
   isFavorited: boolean;
-  year?: string;
-  season?: number | null;
-  area?: string;
-  description?: string;
-  updateInfo?: string;
-  currentEpisodeIndex?: number | null;
-  playlinks?: PlayLink[];
+  links?: PlayLink[];  // 播放链接列表（基于原始 danmu.js）
 }
 
 /**

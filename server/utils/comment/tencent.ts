@@ -16,8 +16,9 @@ interface TencentDanmakuBaseResponse {
 interface TencentDanmakuItem {
   time_offset: number;
   content: string;
-  content_style?: {
+  content_style?: string | {
     color?: string;
+    gradient_colors?: string[];
   };
 }
 
@@ -129,8 +130,18 @@ export async function fetchTencentVideo(inputUrl: string): Promise<DanmakuJson[]
           content: "",
         };
         content.timepoint = item.time_offset / 1000;
-        if (item.content_style?.color) {
-          logger.info("弹幕颜色:", JSON.stringify(item.content_style.color));
+        if (item.content_style && typeof item.content_style === "string" && item.content_style !== "") {
+          try {
+            const content_style = JSON.parse(item.content_style);
+            // 优先使用渐变色的第一个颜色，否则使用基础色
+            if (content_style.gradient_colors && content_style.gradient_colors.length > 0) {
+              content.color = parseInt(content_style.gradient_colors[0].replace("#", ""), 16);
+            } else if (content_style.color && content_style.color !== "ffffff") {
+              content.color = parseInt(content_style.color.replace("#", ""), 16);
+            }
+          } catch {
+            // JSON 解析失败，使用默认白色
+          }
         }
         content.content = item.content;
         contents.push(content);

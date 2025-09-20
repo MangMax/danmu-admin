@@ -4,6 +4,9 @@
  */
 
 import useLogger from '~~/server/composables/useLogger';
+import { searchAnimes } from '~~/server/utils/search/search-router';
+import { getAnimeFromStorage } from '~~/server/utils/anime-storage';
+import type { SearchRequest } from '~~/shared/types/search';
 
 const logger = useLogger();
 
@@ -31,7 +34,7 @@ export default defineEventHandler(async (event) => {
 
     logger.info(`Searching episodes for anime: ${anime}, episode: ${episode || 'all'}`);
 
-    // 先搜索动漫
+    // 先搜索动漫（完全基于原版逻辑）
     const searchRequest: SearchRequest = {
       keyword: anime,
       options: {
@@ -47,52 +50,57 @@ export default defineEventHandler(async (event) => {
       const responseTime = timer.end();
       logApiResponse('/api/v2/search/episodes', 200, responseTime);
 
-      return createSuccessResponse({
+      return {
+        errorCode: 0,
+        success: true,
+        errorMessage: "",
         hasMore: false,
         animes: []
-      });
+      };
     }
 
     let resultAnimes = [];
 
-    // 遍历所有找到的动漫，获取它们的集数信息
+    // 遍历所有找到的动漫，获取它们的集数信息（基于原版逻辑）
     for (const animeItem of searchResults) {
-      // 这里需要获取具体的集数信息
-      // 由于我们还没有实现 getBangumi，先返回基本信息
-      let filteredEpisodes: Array<{ episodeId: number; episodeTitle: string }> = [];
+      // 从存储中获取对应的动漫（包含 links 信息）
+      const storedAnime = await getAnimeFromStorage(animeItem.animeId);
 
-      // 根据 episode 参数过滤集数
+      if (!storedAnime || !storedAnime.links || storedAnime.links.length === 0) {
+        logger.debug(`No stored anime or links found for: ${animeItem.animeId}`);
+        continue;
+      }
+
+      // 构建集数信息（基于原版的 getBangumi 逻辑）
+      // 注意：存储的anime.links已经通过addEpisode处理，包含正确的自增ID
+      const allEpisodes = storedAnime.links.map((link, index) => ({
+        seasonId: `season-${storedAnime.animeId}`,
+        episodeId: link.id, // 直接使用存储的ID，这已经是通过addEpisode生成的正确ID
+        episodeTitle: link.title,
+        episodeNumber: String(index + 1),
+        airDate: storedAnime.startDate
+      }));
+
+      let filteredEpisodes = allEpisodes;
+
+      // 根据 episode 参数过滤集数（完全基于原版逻辑）
       if (episode) {
         if (episode === "movie") {
           // 仅保留剧场版结果
-          if (animeItem.type && (
-            animeItem.type.includes("电影") ||
-            animeItem.type.includes("剧场版") ||
-            animeItem.animeTitle.toLowerCase().includes("movie") ||
-            animeItem.animeTitle.includes("剧场版")
-          )) {
-            filteredEpisodes = [{
-              episodeId: animeItem.animeId,
-              episodeTitle: animeItem.animeTitle
-            }];
-          }
+          filteredEpisodes = allEpisodes.filter(ep =>
+            animeItem.typeDescription && (
+              animeItem.typeDescription.includes("电影") ||
+              animeItem.typeDescription.includes("剧场版") ||
+              ep.episodeTitle.toLowerCase().includes("movie") ||
+              ep.episodeTitle.includes("剧场版")
+            )
+          );
         } else if (/^\d+$/.test(episode)) {
           // 纯数字，仅保留指定集数
           const targetEpisode = parseInt(episode);
-          if (animeItem.episodeCount >= targetEpisode) {
-            filteredEpisodes = [{
-              episodeId: animeItem.animeId + targetEpisode,
-              episodeTitle: `第${targetEpisode}集`
-            }];
-          }
-        }
-      } else {
-        // 返回所有集数的基本信息
-        for (let i = 1; i <= Math.min(animeItem.episodeCount || 1, 50); i++) {
-          filteredEpisodes.push({
-            episodeId: animeItem.animeId + i,
-            episodeTitle: `第${i}集`
-          });
+          filteredEpisodes = allEpisodes.filter(ep =>
+            parseInt(ep.episodeNumber) === targetEpisode
+          );
         }
       }
 
@@ -103,7 +111,10 @@ export default defineEventHandler(async (event) => {
           animeTitle: animeItem.animeTitle,
           type: animeItem.type,
           typeDescription: animeItem.typeDescription,
-          episodes: filteredEpisodes
+          episodes: filteredEpisodes.map(ep => ({
+            episodeId: ep.episodeId,
+            episodeTitle: ep.episodeTitle
+          }))
         });
       }
     }
@@ -113,9 +124,12 @@ export default defineEventHandler(async (event) => {
     const responseTime = timer.end();
     logApiResponse('/api/v2/search/episodes', 200, responseTime);
 
-    return createSuccessResponse({
+    return {
+      errorCode: 0,
+      success: true,
+      errorMessage: "",
       animes: resultAnimes
-    });
+    };
 
   } catch (error: any) {
     logger.error('Search episodes failed:', error);

@@ -1,139 +1,218 @@
 <template>
-  <div class="cache-details">
-    <div class="card">
-      <div class="card-header">
-        <h3 class="card-title">📁 缓存数据详情</h3>
-        <div class="header-actions">
-          <button @click="addSampleData" :disabled="addingData" class="btn btn-success btn-sm">
-            <span v-if="addingData">⏳</span>
-            <span v-else>🧪</span>
+  <Card class="cache-details">
+    <CardHeader>
+      <div class="flex items-center justify-between">
+        <CardTitle class="flex items-center gap-2">
+          <div class="i-lucide-database h-5 w-5" />
+          缓存数据详情
+        </CardTitle>
+        <div class="flex gap-2">
+          <Button @click="addSampleData" :disabled="addingData" variant="default" size="sm">
+            <div v-if="!addingData" class="i-lucide-flask-conical h-4 w-4 mr-2" />
+            <div v-else class="i-lucide-refresh-cw h-4 w-4 mr-2 animate-spin" />
             添加测试数据
-          </button>
-          <button @click="refreshData" :disabled="refreshing" class="btn btn-primary btn-sm">
-            <span v-if="refreshing">🔄</span>
-            <span v-else>🔄</span>
+          </Button>
+          <Button @click="refreshData" :disabled="refreshing" variant="outline" size="sm">
+            <div :class="['i-lucide-refresh-cw h-4 w-4 mr-2', { 'animate-spin': refreshing }]" />
             刷新
-          </button>
+          </Button>
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent>
+
+      <div v-if="pending" class="text-center py-8">
+        <div class="inline-flex items-center">
+          <div class="i-lucide-refresh-cw animate-spin h-6 w-6 mr-2 text-muted-foreground" />
+          <p class="text-muted-foreground">加载缓存数据中...</p>
         </div>
       </div>
 
-      <div v-if="pending" class="loading">
-        <div class="loading-spinner"></div>
-        <p>加载缓存数据中...</p>
-      </div>
-
-      <div v-else-if="error" class="error">
-        <p>❌ 加载失败: {{ error }}</p>
-        <button @click="refreshData" class="btn btn-secondary btn-sm">重试</button>
+      <div v-else-if="error" class="rounded-md bg-destructive/15 border border-destructive/20 p-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <div class="i-lucide-alert-circle h-5 w-5 text-destructive mr-2" />
+            <span class="text-destructive">加载失败: {{ error }}</span>
+          </div>
+          <Button @click="refreshData" variant="outline" size="sm">重试</Button>
+        </div>
       </div>
 
       <div v-else-if="data" class="cache-content">
         <!-- 统计概览 -->
-        <div class="stats-overview">
-          <div class="stat-item">
-            <div class="stat-value">{{ stats.animeCount || 0 }}</div>
-            <div class="stat-label">番剧数</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">{{ stats.episodeCount || 0 }}</div>
-            <div class="stat-label">集数记录</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">{{ stats.totalItems || 0 }}</div>
-            <div class="stat-label">总缓存项</div>
-          </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card class="text-center">
+            <CardContent class="p-4">
+              <div class="text-2xl font-bold text-blue-600">{{ stats.animeCount || 0 }}</div>
+              <div class="text-sm text-muted-foreground">番剧数</div>
+            </CardContent>
+          </Card>
+          <Card class="text-center">
+            <CardContent class="p-4">
+              <div class="text-2xl font-bold text-green-600">{{ stats.episodeCount || 0 }}</div>
+              <div class="text-sm text-muted-foreground">集数记录</div>
+            </CardContent>
+          </Card>
+          <Card class="text-center">
+            <CardContent class="p-4">
+              <div class="text-2xl font-bold text-purple-600">{{ stats.totalItems || 0 }}</div>
+              <div class="text-sm text-muted-foreground">总缓存项</div>
+            </CardContent>
+          </Card>
         </div>
 
         <!-- 番剧列表 -->
-        <div class="section">
-          <h4 class="section-title">
-            🎬 番剧列表 ({{ animes.length }})
-            <span v-if="animes.length === 0" class="empty-hint">
-              - 暂无数据，请先使用搜索功能
-            </span>
+        <div class="mb-6">
+          <h4 class="text-lg font-semibold mb-4 flex items-center gap-2">
+            <div class="i-lucide-film h-5 w-5" />
+            番剧列表 ({{ animes.length }})
+            <Badge v-if="animes.length === 0" variant="outline" class="text-xs">
+              暂无数据，请先使用搜索功能
+            </Badge>
           </h4>
 
-          <div v-if="animes.length > 0" class="anime-list">
-            <div v-for="anime in animes" :key="anime.animeId" class="anime-item">
-              <div class="anime-info">
-                <div class="anime-title">
-                  {{ anime.animeTitle }}
-                  <span class="anime-id">#{{ anime.animeId }}</span>
-                </div>
-                <div class="anime-meta">
-                  <span class="anime-type">{{ anime.type || '未知类型' }}</span>
-                  <span class="anime-episodes">{{ anime.episodeCount || 1 }}集</span>
-                  <span v-if="anime.rating" class="anime-rating">⭐ {{ anime.rating }}</span>
-                </div>
-              </div>
-              <div class="anime-actions">
-                <button @click="testAnime(anime.animeId)" class="btn btn-test btn-xs" title="测试番剧API">
-                  🧪 测试
-                </button>
-                <a :href="`/api/v2/bangumi/${anime.animeId}`" target="_blank" class="btn btn-link btn-xs"
-                  title="查看API响应">
-                  🔗 API
-                </a>
-              </div>
-            </div>
+          <div v-if="animes.length > 0">
+            <Table sticky-header height="400px">
+              <TableHeader sticky>
+                <TableRow>
+                  <TableHead sticky>番剧名称</TableHead>
+                  <TableHead sticky>ID</TableHead>
+                  <TableHead sticky>类型</TableHead>
+                  <TableHead sticky>集数</TableHead>
+                  <TableHead sticky>评分</TableHead>
+                  <TableHead sticky class="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow v-for="anime in animes" :key="anime.animeId">
+                  <TableCell class="font-medium">{{ anime.animeTitle }}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">#{{ anime.animeId }}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{{ anime.type || '未知类型' }}</Badge>
+                  </TableCell>
+                  <TableCell>{{ anime.episodeCount || 1 }}集</TableCell>
+                  <TableCell>
+                    <Badge v-if="anime.rating" variant="secondary">⭐ {{ anime.rating }}</Badge>
+                    <span v-else class="text-muted-foreground">-</span>
+                  </TableCell>
+                  <TableCell class="text-right">
+                    <div class="flex gap-2 justify-end">
+                      <Button @click="testAnime(anime.animeId)" variant="outline" size="sm">
+                        <div class="i-lucide-flask-conical h-3 w-3 mr-1" />
+                        测试
+                      </Button>
+                      <Button asChild variant="outline" size="sm">
+                        <a :href="`/api/v2/bangumi/${anime.animeId}`" target="_blank">
+                          <div class="i-lucide-external-link h-3 w-3 mr-1" />
+                          API
+                        </a>
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </div>
         </div>
 
         <!-- 集数数据 -->
-        <div class="section">
-          <h4 class="section-title">
-            📺 集数数据 ({{ episodes.length }}) - commentId弹幕ID
+        <div class="mb-6">
+          <h4 class="text-lg font-semibold mb-4 flex items-center gap-2">
+            <div class="i-lucide-tv h-5 w-5" />
+            集数数据 ({{ episodes.length }})
+            <Badge variant="outline" class="text-xs">commentId弹幕ID</Badge>
           </h4>
 
-          <div v-if="episodes.length > 0" class="episodes-list">
-            <div v-for="episode in episodes.slice(0, 10)" :key="episode.id" class="episode-item">
-              <div class="episode-id">
-                <strong>ID: {{ episode.id }}</strong>
-                <span class="comment-hint">(commentId)</span>
-              </div>
-              <div class="episode-title">{{ episode.title || `Episode ${episode.id}` }}</div>
-              <div class="episode-url">{{ truncateUrl(episode.url) }}</div>
-              <div class="episode-actions">
-                <a :href="`/api/v2/comment/${episode.id}`" target="_blank" class="btn btn-comment btn-sm">
-                  💬 获取弹幕
-                </a>
-                <button @click="testComment(episode.id)" class="btn btn-test btn-sm">
-                  🧪 测试弹幕
-                </button>
-              </div>
-            </div>
-            <div v-if="episodes.length > 10" class="more-episodes">
-              还有 {{ episodes.length - 10 }} 条记录...
-              <button @click="showAllEpisodes = !showAllEpisodes" class="btn btn-secondary btn-sm">
-                {{ showAllEpisodes ? '收起' : '显示全部' }}
-              </button>
+          <div v-if="episodes.length > 0">
+            <Table sticky-header height="500px">
+              <TableHeader sticky>
+                <TableRow>
+                  <TableHead sticky>ID</TableHead>
+                  <TableHead sticky>标题</TableHead>
+                  <TableHead sticky>URL</TableHead>
+                  <TableHead sticky class="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow v-for="episode in episodes.slice(0, showAllEpisodes ? episodes.length : 10)"
+                  :key="episode.id">
+                  <TableCell>
+                    <div class="flex items-center gap-2">
+                      <Badge variant="outline">{{ episode.id }}</Badge>
+                      <Badge variant="secondary" class="text-xs">commentId</Badge>
+                    </div>
+                  </TableCell>
+                  <TableCell class="font-medium">{{ episode.title || `Episode ${episode.id}` }}</TableCell>
+                  <TableCell>
+                    <code class="text-xs bg-muted px-2 py-1 rounded">{{ truncateUrl(episode.url) }}</code>
+                  </TableCell>
+                  <TableCell class="text-right">
+                    <div class="flex gap-2 justify-end">
+                      <Button asChild variant="outline" size="sm">
+                        <a :href="`/api/v2/comment/${episode.id}`" target="_blank">
+                          <div class="i-lucide-message-circle h-3 w-3 mr-1" />
+                          获取弹幕
+                        </a>
+                      </Button>
+                      <Button @click="testComment(episode.id)" variant="outline" size="sm">
+                        <div class="i-lucide-flask-conical h-3 w-3 mr-1" />
+                        测试
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+            <div v-if="episodes.length > 10" class="mt-4 text-center">
+              <Button @click="showAllEpisodes = !showAllEpisodes" variant="outline">
+                {{ showAllEpisodes ? '收起' : `显示全部 (${episodes.length - 10} 条记录)` }}
+              </Button>
             </div>
           </div>
 
-          <div v-else class="empty-episodes">
-            暂无集数数据
+          <div v-else class="text-center py-8">
+            <div class="i-lucide-file-x mx-auto h-12 w-12 text-muted-foreground/60" />
+            <p class="mt-2 text-muted-foreground">暂无集数数据</p>
           </div>
         </div>
 
         <!-- 测试结果 -->
-        <div v-if="testResult" class="test-result">
-          <h4 class="section-title">🧪 测试结果</h4>
-          <div :class="['test-output', testResult.success ? 'success' : 'error']">
-            <pre>{{ JSON.stringify(testResult.data, null, 2) }}</pre>
-          </div>
+        <div v-if="testResult" class="mb-6">
+          <h4 class="text-lg font-semibold mb-4 flex items-center gap-2">
+            <div class="i-lucide-flask-conical h-5 w-5" />
+            测试结果
+          </h4>
+          <Card :class="testResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'">
+            <CardContent>
+              <ScrollArea class="h-60">
+                <pre class="text-xs">{{ JSON.stringify(testResult.data, null, 2) }}</pre>
+              </ScrollArea>
+            </CardContent>
+          </Card>
         </div>
 
         <!-- 更新时间 -->
-        <div class="update-time">
-          最后更新: {{ formatTime(data.timestamp) }}
+        <div class="text-center pt-4 border-t">
+          <Badge variant="outline" class="text-xs">
+            <div class="i-lucide-clock h-3 w-3 mr-1" />
+            最后更新: {{ formatTime(data.timestamp) }}
+          </Badge>
         </div>
       </div>
-    </div>
-  </div>
+    </CardContent>
+  </Card>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { toast } from 'vue-sonner'
 
 // 响应式数据
 const { data, pending, error, refresh } = await useFetch('/api/cache/details')
@@ -169,12 +248,18 @@ const addSampleData = async () => {
       }
       // 自动刷新数据
       await refresh()
+      toast.success('测试数据添加成功', {
+        description: '已添加示例数据到缓存'
+      });
     } else {
       testResult.value = {
         success: false,
         type: 'sample-data',
         data: response
       }
+      toast.error('添加测试数据失败', {
+        description: response.errorMessage || '请稍后重试'
+      });
     }
   } catch (err) {
     testResult.value = {
@@ -254,329 +339,5 @@ const stats = computed(() => cacheData.value.stats || {})
 <style scoped>
 .cache-details {
   margin-top: 2rem;
-}
-
-.card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  background: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.card-title {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 600;
-}
-
-.btn {
-  padding: 0.375rem 0.75rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.btn-primary {
-  background: #007bff;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #0056b3;
-}
-
-.btn-primary:disabled {
-  background: #6c757d;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-success {
-  background: #28a745;
-  color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-  background: #218838;
-}
-
-.btn-test {
-  background: #28a745;
-  color: white;
-}
-
-.btn-link {
-  background: #17a2b8;
-  color: white;
-}
-
-.btn-sm {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-}
-
-.btn-xs {
-  padding: 0.125rem 0.375rem;
-  font-size: 0.625rem;
-}
-
-.loading,
-.error {
-  padding: 2rem;
-  text-align: center;
-}
-
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #007bff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.cache-content {
-  padding: 1.5rem;
-}
-
-.stats-overview {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.stat-item {
-  text-align: center;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 6px;
-}
-
-.stat-value {
-  font-size: 2rem;
-  font-weight: bold;
-  color: #007bff;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: #6c757d;
-  margin-top: 0.25rem;
-}
-
-.section {
-  margin-bottom: 2rem;
-}
-
-.section-title {
-  margin: 0 0 1rem 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #333;
-}
-
-.empty-hint {
-  font-size: 0.875rem;
-  color: #6c757d;
-  font-weight: normal;
-}
-
-.anime-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.anime-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
-  background: #fafafa;
-}
-
-.anime-info {
-  flex: 1;
-}
-
-.anime-title {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.anime-id {
-  color: #6c757d;
-  font-size: 0.875rem;
-  font-weight: normal;
-}
-
-.anime-meta {
-  display: flex;
-  gap: 0.75rem;
-  font-size: 0.875rem;
-  color: #6c757d;
-}
-
-.anime-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.episodes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.episode-item {
-  display: grid;
-  grid-template-columns: 100px 1fr 150px;
-  gap: 1rem;
-  padding: 0.75rem;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  background: #fafafa;
-  font-size: 0.875rem;
-}
-
-.episode-id {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: #007bff;
-}
-
-.comment-hint {
-  font-size: 12px;
-  color: #6c757d;
-  background: #e9ecef;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-weight: normal;
-}
-
-.episode-title {
-  color: #343a40;
-  font-weight: 500;
-  margin: 4px 0;
-}
-
-.episode-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.btn-comment {
-  background: #28a745;
-  color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  text-decoration: none;
-  font-size: 12px;
-}
-
-.btn-comment:hover {
-  background: #218838;
-}
-
-.episode-url {
-  color: #6c757d;
-  word-break: break-all;
-}
-
-.episode-time {
-  color: #6c757d;
-  text-align: right;
-}
-
-.more-episodes {
-  padding: 0.5rem;
-  text-align: center;
-  color: #6c757d;
-  font-size: 0.875rem;
-}
-
-.empty-episodes {
-  padding: 1rem;
-  text-align: center;
-  color: #6c757d;
-  font-style: italic;
-}
-
-.test-result {
-  margin-top: 1rem;
-  padding: 1rem;
-  border-radius: 6px;
-  border: 1px solid #dee2e6;
-}
-
-.test-output {
-  padding: 1rem;
-  border-radius: 4px;
-  overflow-x: auto;
-}
-
-.test-output.success {
-  background: #d4edda;
-  border: 1px solid #c3e6cb;
-}
-
-.test-output.error {
-  background: #f8d7da;
-  border: 1px solid #f5c6cb;
-}
-
-.test-output pre {
-  margin: 0;
-  font-size: 0.875rem;
-}
-
-.update-time {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid #dee2e6;
-  text-align: center;
-  font-size: 0.875rem;
-  color: #6c757d;
 }
 </style>
