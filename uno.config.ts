@@ -1,10 +1,9 @@
-import { mergeConfigs, presetWind3, presetWind4, presetIcons } from 'unocss'
+import { defineConfig, presetWind3, presetWind4, presetIcons } from 'unocss'
 import presetAnimations from "unocss-preset-animations";
 import { presetShadcn } from "unocss-preset-shadcn";
 import presetCatppuccin from '@catppuccin/unocss';
-import config from './.nuxt/uno.config.mjs'
 
-export default mergeConfigs([config, {
+export default defineConfig({
   presets: [
     presetWind3(),
     presetWind4({
@@ -31,4 +30,4 @@ export default mergeConfigs([config, {
       ],
     },
   },
-}])
+})

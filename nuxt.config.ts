@@ -23,9 +23,6 @@ export default defineNuxtConfig({
     '@unocss/nuxt',
     'shadcn-nuxt',
   ],
-  unocss: {
-    nuxtLayers: true,
-  },
   shadcn: {
     componentDir: './app/components/ui'
   },
