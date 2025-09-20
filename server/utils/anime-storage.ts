@@ -4,6 +4,7 @@
  */
 
 import useLogger from '~~/server/composables/useLogger';
+import { removeEpisodeByUrl } from './episode-storage';
 
 const logger = useLogger();
 
@@ -58,8 +59,13 @@ export async function addAnimeToStorage(anime: AnimeSearchResult): Promise<boole
       // 删除最早添加的动漫（简单的 LRU 策略）
       const firstKey = Object.keys(animes)[0];
       if (firstKey) {
+        const oldestAnime = animes[parseInt(firstKey)];
         delete animes[parseInt(firstKey)];
-        logger.debug(`Removed oldest anime ${firstKey} from storage`);
+
+        // 清理该动漫的剧集数据
+        await cleanupAnimeEpisodes(oldestAnime);
+
+        logger.debug(`Removed oldest anime ${firstKey} and its episodes from storage`);
       }
     }
 
@@ -173,6 +179,30 @@ export async function getStorageStats(): Promise<StorageStats> {
 }
 
 /**
+ * 批量清理动漫的剧集数据
+ */
+async function cleanupAllAnimeEpisodes(animes: Record<number, AnimeSearchResult>): Promise<void> {
+  try {
+    let totalCleaned = 0;
+    for (const anime of Object.values(animes)) {
+      if (anime.links && Array.isArray(anime.links)) {
+        for (const link of anime.links) {
+          if (link.url) {
+            const removed = removeEpisodeByUrl(link.url);
+            if (removed) {
+              totalCleaned++;
+            }
+          }
+        }
+      }
+    }
+    logger.info(`Cleaned up ${totalCleaned} episodes from all animes`);
+  } catch (error) {
+    logger.error('Failed to cleanup all anime episodes:', error);
+  }
+}
+
+/**
  * 清空存储
  */
 export async function clearStorage(): Promise<void> {
@@ -180,11 +210,14 @@ export async function clearStorage(): Promise<void> {
     const animes = await getAnimeStorage();
     const count = Object.keys(animes).length;
 
+    // 先清理所有动漫的剧集数据
+    await cleanupAllAnimeEpisodes(animes);
+
     const storage = useStorage('default');
     await storage.removeItem(ANIME_STORAGE_KEY);
     await storage.removeItem(ANIME_STATS_KEY);
 
-    logger.info(`Cleared ${count} animes from storage`);
+    logger.info(`Cleared ${count} animes and their episodes from storage`);
   } catch (error) {
     logger.error('Failed to clear storage:', error);
   }
@@ -245,19 +278,48 @@ export async function updateAnimeInStorage(animeId: number, updates: Partial<Ani
 export async function removeAnimeFromStorage(animeId: number): Promise<boolean> {
   try {
     const animes = await getAnimeStorage();
+    const anime = animes[animeId];
 
-    if (!animes[animeId]) {
+    if (!anime) {
       logger.warn(`Anime ${animeId} not found for removal`);
       return false;
     }
 
+    // 删除动漫数据
     delete animes[animeId];
     await saveAnimeStorage(animes);
-    logger.debug(`Removed anime ${animeId} from storage`);
+
+    // 删除相关的剧集数据
+    await cleanupAnimeEpisodes(anime);
+
+    logger.debug(`Removed anime ${animeId} and its episodes from storage`);
     return true;
   } catch (error) {
     logger.error('Failed to remove anime from storage:', error);
     return false;
+  }
+}
+
+/**
+ * 清理动漫相关的剧集数据
+ */
+async function cleanupAnimeEpisodes(anime: AnimeSearchResult): Promise<void> {
+  try {
+    // 检查动漫是否有 links 属性（剧集链接）
+    if (anime.links && Array.isArray(anime.links)) {
+      let cleanedCount = 0;
+      for (const link of anime.links) {
+        if (link.url) {
+          const removed = removeEpisodeByUrl(link.url);
+          if (removed) {
+            cleanedCount++;
+          }
+        }
+      }
+      logger.debug(`Cleaned up ${cleanedCount} episodes for anime ${anime.animeId}`);
+    }
+  } catch (error) {
+    logger.error('Failed to cleanup anime episodes:', error);
   }
 }
 

@@ -9,6 +9,14 @@ export interface DanmakuInputObject {
   uid?: number; // 用户 ID（可选）
 }
 
+// 定义新格式弹幕对象类型
+export interface DanmakuNewFormatObject {
+  progress: number; // 进度（毫秒）
+  mode: number; // 模式
+  color?: number; // 颜色（可选，默认为 16777215）
+  content: string; // 内容
+}
+
 // 定义 Bilibili 格式的弹幕项（数组格式）
 export type DanmakuItem = [number, string, string, any, string]; // [timepoint, mode, color, ?, content]
 
@@ -16,7 +24,8 @@ export type DanmakuItem = [number, string, string, any, string]; // [timepoint, 
 export type DanmakuContents =
   | string // XML 字符串格式
   | { danmuku: DanmakuItem[] } // Bilibili 对象格式
-  | DanmakuInputObject[]; // 标准对象数组格式
+  | DanmakuInputObject[] // 标准对象数组格式
+  | DanmakuNewFormatObject[]; // 新格式对象数组
 
 // 定义输出弹幕 JSON 类型
 export interface DanmakuJson {
@@ -31,7 +40,7 @@ export interface BilibiliDanmakuInput {
   m: string; // 弹幕内容
 }
 
-export type DanmakuInputItem = DanmakuInputObject | BilibiliDanmakuInput; // 统一输入项类型
+export type DanmakuInputItem = DanmakuInputObject | BilibiliDanmakuInput | DanmakuNewFormatObject; // 统一输入项类型
 
 export type DanmakuTypeMap = Record<string, number>; // 类型映射表
 

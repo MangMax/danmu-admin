@@ -5,7 +5,8 @@ import type {
   DanmakuInputObject,
   DanmakuItem,
   DanmakuTypeMap,
-  BilibiliDanmakuInput
+  BilibiliDanmakuInput,
+  DanmakuNewFormatObject
 } from "#shared/types/danmuku";
 
 const logger = useLogger();
@@ -53,7 +54,18 @@ export default function convertToDanmakuJson(contents: DanmakuContents, platform
     let attributes: string;
     let m: string;
 
-    if ("timepoint" in item) {
+    // 新增：处理新格式的弹幕数据
+    if ("progress" in item && "mode" in item && "content" in item) {
+      // 处理新格式的弹幕对象
+      const newFormatItem = item as DanmakuNewFormatObject;
+      attributes = [
+        (newFormatItem.progress / 1000).toFixed(2), // progress 转换为秒
+        newFormatItem.mode || 1,
+        newFormatItem.color || 16777215,
+        `[${platform}]`
+      ].join(",");
+      m = newFormatItem.content;
+    } else if ("timepoint" in item) {
       // 处理对象数组输入
       const objItem = item as DanmakuInputObject;
       attributes = [
@@ -64,6 +76,9 @@ export default function convertToDanmakuJson(contents: DanmakuContents, platform
       ].join(",");
       m = objItem.content;
     } else {
+      if (!("p" in item)) {
+        continue;
+      }
       // 处理 XML 解析后的格式
       const xmlItem = item as BilibiliDanmakuInput;
       const pValues = xmlItem.p.split(",");
