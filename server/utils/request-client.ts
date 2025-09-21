@@ -42,13 +42,13 @@ export async function httpGet<T = any>(
   url: string,
   options: RequestOptions = {}
 ): Promise<HttpResponse<T>> {
-  const { headers = {}, params = {}, allow_redirects = true, timeout = 30000, base64Data = false, zlibMode = false } = options;
+  const { headers: requestHeaders = {}, params = {}, allow_redirects = true, timeout = 30000, base64Data = false, zlibMode = false } = options;
 
   try {
     // 合并iOS模拟请求头
     const finalHeaders: Record<string, string> = {
       ...getIOSHeaders(),
-      ...headers
+      ...requestHeaders
     };
 
     // 构建查询参数
@@ -138,22 +138,37 @@ export async function httpGet<T = any>(
       data = response._data;
     }
 
-    // 对于特殊模式，尝试解析为JSON
-    if (base64Data || zlibMode) {
-      try {
-        data = JSON.parse(data);
-      } catch {
-        // 如果解析失败，保留原始数据
-        logger.warn(`[HTTP GET Warning] 尝试解析为JSON失败，返回原始数据: ${url}:`);
+    // 尝试解析为JSON（所有模式都尝试，与 danmu_v1.1.0.js 保持一致）
+    let parsedData;
+    try {
+      parsedData = JSON.parse(data);  // 尝试将文本解析为 JSON
+    } catch {
+      parsedData = data;  // 如果解析失败，保留原始文本
+    }
+    data = parsedData;
+
+    // 获取所有 headers，但特别处理 set-cookie（与 danmu_v1.1.0.js 保持一致）
+    const headers: Record<string, string> = {};
+    let setCookieValues: string[] = [];
+
+    // 遍历 headers 条目
+    for (const [key, value] of response.headers.entries()) {
+      if (key.toLowerCase() === 'set-cookie') {
+        setCookieValues.push(String(value));
+      } else {
+        headers[key] = String(value);
       }
+    }
+
+    // 如果存在 set-cookie 头，将其合并为分号分隔的字符串
+    if (setCookieValues.length > 0) {
+      headers['set-cookie'] = setCookieValues.join(';');
     }
 
     return {
       data: data as T,
       status: response.status,
-      headers: Object.fromEntries(
-        Object.entries(response.headers).map(([k, v]) => [k, String(v)])
-      )
+      headers: headers
     };
 
   } catch (error: any) {
@@ -176,13 +191,13 @@ export async function httpPost<T = any>(
   body: any,
   options: RequestOptions = {}
 ): Promise<HttpResponse<T>> {
-  const { headers = {}, params = {}, allow_redirects = true, timeout = 30000 } = options;
+  const { headers: requestHeaders = {}, params = {}, allow_redirects = true, timeout = 30000 } = options;
 
   try {
     // 合并iOS模拟请求头
     const finalHeaders: Record<string, string> = {
       ...getIOSHeaders(),
-      ...headers
+      ...requestHeaders
     };
 
     // 如果没有指定Content-Type，根据body类型自动设置
@@ -227,12 +242,20 @@ export async function httpPost<T = any>(
       }
     });
 
+    const data = response._data;
+
+    // 尝试解析为JSON（与 danmu_v1.1.0.js 保持一致）
+    let parsedData;
+    try {
+      parsedData = typeof data === 'string' ? JSON.parse(data) : data;  // 尝试将文本解析为 JSON
+    } catch {
+      parsedData = data;  // 如果解析失败，保留原始文本
+    }
+
     return {
-      data: response._data as T,
+      data: parsedData as T,
       status: response.status,
-      headers: Object.fromEntries(
-        Object.entries(response.headers).map(([k, v]) => [k, String(v)])
-      )
+      headers: Object.fromEntries(response.headers.entries())
     };
 
   } catch (error: any) {

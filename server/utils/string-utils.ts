@@ -245,7 +245,10 @@ export class StringUtils {
    */
   static safeJsonParse<T = any>(str: string, defaultValue: T | null = null): T | null {
     try {
-      return JSON.parse(str);
+      if (typeof str === "string") {
+        return JSON.parse(str);
+      }
+      return str;
     } catch {
       logger.warn('Failed to parse JSON:', str);
       return defaultValue;

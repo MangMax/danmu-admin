@@ -52,6 +52,8 @@ cp .env.example .env
 |---------|--------|------|
 | `NUXT_OTHER_SERVER` | `https://api.danmu.icu` | 第三方弹幕服务器 |
 | `NUXT_VOD_SERVER` | `https://www.caiji.cyou` | VOD视频资源服务器 |
+| `NUXT_BILIBILI_COOKIE` | `""` | B站Cookie配置 🆕 |
+| `NUXT_YOUKU_CONCURRENCY` | `8` | 优酷并发数配置 (最大16) 🆕 |
 
 > **注意**: Token 认证已禁用，系统开箱即用，无需配置访问令牌。
 

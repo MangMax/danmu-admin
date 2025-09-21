@@ -50,7 +50,7 @@ export async function searchVodAnimes(title: string, options: SearchOptions = {}
 
     logger.info(`开始搜索VOD动画: ${title} from ${vodServer}`);
 
-    const response = await httpGet(
+    const response = await httpGet<VodResponse>(
       `${vodServer}/api.php/provide/vod/?ac=detail&wd=${encodeURIComponent(title)}&pg=1`,
       {
         headers: {
@@ -61,7 +61,7 @@ export async function searchVodAnimes(title: string, options: SearchOptions = {}
       }
     );
 
-    const data = utils.string.safeJsonParse(response.data, { list: [] }) as VodResponse;
+    const data = response.data;
 
     // 检查响应数据
     if (!data.list || !Array.isArray(data.list) || data.list.length === 0) {

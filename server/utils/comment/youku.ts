@@ -3,6 +3,7 @@ import useLogger from "../../composables/useLogger";
 import convertToDanmakuJson from '../convertToDanmakuJson';
 import { CryptoUtils } from '../crypto-utils';
 import { utils } from '../string-utils';
+import { config } from '../env-config';
 import type { DanmakuInputObject, DanmakuJson } from '#shared/types/danmuku';
 
 const logger = useLogger();
@@ -72,8 +73,7 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
       allow_redirects: false,
     });
     const etag = cnaRes.headers['etag'] || cnaRes.headers['Etag'];
-    cna = etag.replace(/^"|"$/g, '');
-
+    cna = etag?.replace(/^"|"$/g, '');
     let tkEncRes: any;
     while (!tkEncRes) {
       tkEncRes = await httpGet(tkEncUrl, {
@@ -85,12 +85,10 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
       });
     }
     const tkEncSetCookie = tkEncRes.headers['set-cookie'] || tkEncRes.headers['Set-Cookie'];
-    const tkEncMatch = tkEncSetCookie.match(/_m_h5_tk_enc=([^;]+)/);
+    const tkEncMatch = tkEncSetCookie?.match(/_m_h5_tk_enc=([^;]+)/);
     _m_h5_tk_enc = tkEncMatch ? tkEncMatch[1] : undefined;
-    const tkH5Match = tkEncSetCookie.match(/_m_h5_tk=([^;]+)/);
+    const tkH5Match = tkEncSetCookie?.match(/_m_h5_tk=([^;]+)/);
     _m_h5_tk = tkH5Match ? tkH5Match[1] : undefined;
-    logger.log('_m_h5_tk_enc:', _m_h5_tk_enc);
-    logger.log('_m_h5_tk:', _m_h5_tk);
   } catch (error) {
     logger.error('获取 cna 或 tk_enc 失败:', error);
     return [];
@@ -98,11 +96,15 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
 
   const step = 60;
   const max_mat = Math.floor(duration / step) + 1;
-  const contents: DanmakuInputObject[] = [];
+  let contents: DanmakuInputObject[] = [];
 
-  // 使用工具类进行编码转换
+  // 获取优酷并发配置
+  const youkuConcurrency = await config.getYoukuConcurrency();
+  logger.log(`优酷并发数配置: ${youkuConcurrency}`);
 
-  for (let mat = 0; mat < max_mat; mat++) {
+
+  // 将构造请求和解析逻辑封装为函数，返回该分段的弹幕数组
+  const requestOneMat = async (mat: number): Promise<DanmakuInputObject[]> => {
     const msg: any = {
       ctime: Date.now(),
       ctype: 10004,
@@ -117,9 +119,43 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
     };
 
     const str = JSON.stringify(msg);
-    const msg_b64encode = CryptoUtils.EncodingConverter.latin1Base64(str);
+    function utf8ToLatin1(str: string) {
+      let result = '';
+      for (let i = 0; i < str.length; i++) {
+        const charCode = str.charCodeAt(i);
+        if (charCode > 255) {
+          result += encodeURIComponent(str[i]);
+        } else {
+          result += str[i];
+        }
+      }
+      return result;
+    }
+
+    function base64Encode(input: string) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+      let output = '';
+      let buffer = 0;
+      let bufferLength = 0;
+      for (let i = 0; i < input.length; i++) {
+        buffer = (buffer << 8) | input.charCodeAt(i);
+        bufferLength += 8;
+        while (bufferLength >= 6) {
+          output += chars[(buffer >> (bufferLength - 6)) & 0x3F];
+          bufferLength -= 6;
+        }
+      }
+      if (bufferLength > 0) {
+        output += chars[(buffer << (6 - bufferLength)) & 0x3F];
+      }
+      while (output.length % 4 !== 0) {
+        output += '=';
+      }
+      return output;
+    }
+    const msg_b64encode = base64Encode(utf8ToLatin1(str));
     msg.msg = msg_b64encode;
-    msg.sign = CryptoUtils.md5(`${msg_b64encode}MkmC9SoIw6xCkSKHhJ7b5D2r51kBiREr`);
+    msg.sign = CryptoUtils.md5(`${msg_b64encode}MkmC9SoIw6xCkSKHhJ7b5D2r51kBiREr`).toString().toLowerCase();
 
     const data = JSON.stringify(msg);
     const t = Date.now();
@@ -127,7 +163,7 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
       jsv: '2.5.6',
       appKey: '24679788',
       t: t,
-      sign: CryptoUtils.md5([_m_h5_tk!.slice(0, 32), t, '24679788', data].join('&')),
+      sign: CryptoUtils.md5([_m_h5_tk!.slice(0, 32), t, '24679788', data].join('&')).toString().toLowerCase(),
       api: 'mopen.youku.danmu.list',
       v: '1.0',
       type: 'originaljson',
@@ -140,6 +176,7 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
     const url = `${api_danmaku}?${queryString}`;
     logger.log('piece_url: ', url);
 
+    const results: DanmakuInputObject[] = [];
     try {
       const response = await httpPost(url, `data=${encodeURIComponent(data)}`, {
         headers: {
@@ -150,39 +187,61 @@ export async function fetchYouku(inputUrl: string): Promise<DanmakuJson[]> {
         },
         allow_redirects: false,
       });
-
       if (response.data?.data && response.data.data.result) {
         const result = JSON.parse(response.data.data.result);
-        if (result.code === '-1') continue;
-        const danmus = result.data.result;
-        for (const danmu of danmus) {
-          // 仅填入共享类型 `DanmakuInputObject` 中定义的字段
-          const content: DanmakuInputObject = {
-            timepoint: danmu.playat / 1000,
-            ct: 1,
-            color: 16777215,
-            content: danmu.content || '',
-          };
-          if (danmu.propertis?.color) {
-            try {
-              content.color = JSON.parse(danmu.propertis).color;
-              if (danmu.propertis?.pos) {
-                if (JSON.parse(danmu.propertis).pos === 1) {
-                  content.ct = 5;
-                } else if (JSON.parse(danmu.propertis).pos === 2) {
-                  content.ct = 4;
+        logger.log('result: ', result);
+
+        if (result.code !== '-1') {
+          const danmus = result.data.result;
+          for (const danmu of danmus) {
+            // 仅填入共享类型 `DanmakuInputObject` 中定义的字段
+            const content: DanmakuInputObject = {
+              timepoint: danmu.playat / 1000,
+              ct: 1,
+              size: 25,
+              color: 16777215,
+              unixtime: Math.floor(Date.now() / 1000),
+              uid: 0,
+              content: "",
+            };
+            if (danmu.propertis?.color) {
+              try {
+                content.color = JSON.parse(danmu.propertis).color;
+                if (danmu.propertis?.pos) {
+                  const pos = JSON.parse(danmu.propertis).pos;
+                  if (pos === 1) {
+                    content.ct = 5;
+                  } else if (pos === 2) {
+                    content.ct = 4;
+                  }
                 }
+              } catch {
+                // ignore parse error
               }
-            } catch {
-              // ignore parse error
             }
+            results.push(content);
           }
-          contents.push(content);
         }
       }
     } catch (error: any) {
-      logger.error('请求失败:', error?.message || error);
-      return [];
+      logger.error(`优酷分段请求失败 (mat=${mat}):`, error?.message || error);
+    }
+    return results;
+  };
+
+  // 并发限制处理，批量执行请求
+  const mats = Array.from({ length: max_mat }, (_, i) => i);
+  for (let i = 0; i < mats.length; i += youkuConcurrency) {
+    const batch = mats.slice(i, i + youkuConcurrency).map((m) => requestOneMat(m));
+    try {
+      const settled = await Promise.allSettled(batch);
+      for (const s of settled) {
+        if (s.status === 'fulfilled' && Array.isArray(s.value)) {
+          contents = contents.concat(s.value);
+        }
+      }
+    } catch (e) {
+      logger.error('优酷分段批量请求失败:', e);
     }
   }
 

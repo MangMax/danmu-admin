@@ -45,6 +45,8 @@ cp .env.example .env
 | `NUXT_TOKEN` | `87654321` | API 访问令牌 |
 | `NUXT_OTHER_SERVER` | `https://api.danmu.icu` | 第三方弹幕服务器 |
 | `NUXT_VOD_SERVER` | `https://www.caiji.cyou` | VOD 视频资源服务器 |
+| `NUXT_BILIBILI_COOKIE` | `""` | B站Cookie配置 🆕 |
+| `NUXT_YOUKU_CONCURRENCY` | `8` | 优酷并发数配置 (最大16) 🆕 |
 | `NUXT_REQUEST_TIMEOUT` | `30000` | 请求超时时间（毫秒） |
 | `NUXT_MAX_RETRY_COUNT` | `3` | 最大重试次数 |
 | `NUXT_PUBLIC_MAX_LOGS` | `500` | 最大日志条数 |

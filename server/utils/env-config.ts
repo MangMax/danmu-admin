@@ -12,6 +12,7 @@ export interface DanmuConfig {
   otherServer: string;
   vodServer: string;
   bilibiliCookie: string;
+  youkuConcurrency: number;
   version: string;
   allowedPlatforms: readonly string[];
   requestTimeout: number;
@@ -61,6 +62,7 @@ class DanmuConfigManager {
         otherServer: runtimeConfig.otherServer,
         vodServer: runtimeConfig.vodServer,
         bilibiliCookie: runtimeConfig.bilibiliCookie || "",
+        youkuConcurrency: Math.min(runtimeConfig.youkuConcurrency || 8, 16),
         version: runtimeConfig.public.version,
         allowedPlatforms: runtimeConfig.public.allowedPlatforms,
         requestTimeout: runtimeConfig.requestTimeout,
@@ -94,7 +96,8 @@ class DanmuConfigManager {
       otherServer: "https://api.danmu.icu",
       vodServer: "https://www.caiji.cyou",
       bilibiliCookie: "",
-      version: "1.0.4",
+      youkuConcurrency: Math.min(8, 16),
+      version: "1.1.0",
       allowedPlatforms: ["qiyi", "bilibili1", "imgo", "youku", "qq"],
       requestTimeout: 30000,
       maxRetryCount: 3,
@@ -273,6 +276,7 @@ export const config = {
   getOtherServer: async () => (await danmuConfig.getConfig()).otherServer,
   getVodServer: async () => (await danmuConfig.getConfig()).vodServer,
   getBilibiliCookie: async () => (await danmuConfig.getConfig()).bilibiliCookie,
+  getYoukuConcurrency: async () => (await danmuConfig.getConfig()).youkuConcurrency,
   getVersion: async () => (await danmuConfig.getConfig()).version,
   getRuntime: async () => (await danmuConfig.getConfig()).runtime,
   isProduction: async () => (await danmuConfig.getConfig()).nodeEnv === 'production',
@@ -290,6 +294,7 @@ export const configSync = {
   getOtherServer: () => danmuConfig.getConfigSync()?.otherServer,
   getVodServer: () => danmuConfig.getConfigSync()?.vodServer,
   getBilibiliCookie: () => danmuConfig.getConfigSync()?.bilibiliCookie,
+  getYoukuConcurrency: () => danmuConfig.getConfigSync()?.youkuConcurrency,
   getVersion: () => danmuConfig.getConfigSync()?.version,
   getRuntime: () => danmuConfig.getConfigSync()?.runtime,
   isProduction: () => danmuConfig.getConfigSync()?.nodeEnv === 'production',

@@ -50,7 +50,7 @@ export async function search360Animes(title: string, options: SearchOptions = {}
   try {
     logger.info(`开始搜索360kan动画: ${title}`);
 
-    const response = await httpGet(
+    const response = await httpGet<Kan360Response>(
       `https://api.so.360kan.com/index?force_v=1&kw=${encodeURIComponent(title)}&from=&pageno=1&v_ap=1&tab=all`,
       {
         headers: {
@@ -61,7 +61,7 @@ export async function search360Animes(title: string, options: SearchOptions = {}
       }
     );
 
-    const data = utils.string.safeJsonParse(response.data, { data: { longData: {} } }) as Kan360Response;
+    const data = response.data;
     logger.info("360kan response received");
 
     let animes: Kan360Anime[] = [];
@@ -116,22 +116,25 @@ export async function search360Animes(title: string, options: SearchOptions = {}
         }
       }
 
-      const result: AnimeSearchResult = {
-        provider: '360kan',
-        animeId: Number(anime.id),
-        bangumiId: anime.id?.toString(),
-        animeTitle: `${anime.titleTxt}(${anime.year})`,
-        type: `${anime.cat_name} - 360kan`,
-        typeDescription: `${anime.cat_name} - 360kan`,
-        imageUrl: anime.cover,
-        startDate: `${anime.year}-01-01T00:00:00`,
-        episodeCount: links.length,
-        rating: 0, // 原始代码默认使用 0
-        isFavorited: true, // 原始代码默认使用 true
-        links: links  // 添加播放链接（基于原始 danmu.js）
-      };
+      // 只有当有播放链接时才添加结果（修复360电影获取不到的问题）
+      if (links.length > 0) {
+        const result: AnimeSearchResult = {
+          provider: '360kan',
+          animeId: Number(anime.id),
+          bangumiId: anime.id?.toString(),
+          animeTitle: `${anime.titleTxt}(${anime.year})`,
+          type: `${anime.cat_name} - 360kan`,
+          typeDescription: `${anime.cat_name} - 360kan`,
+          imageUrl: anime.cover,
+          startDate: `${anime.year}-01-01T00:00:00`,
+          episodeCount: links.length,
+          rating: 0, // 原始代码默认使用 0
+          isFavorited: true, // 原始代码默认使用 true
+          links: links  // 添加播放链接（基于原始 danmu.js）
+        };
 
-      results.push(result);
+        results.push(result);
+      }
     }
 
     return results;

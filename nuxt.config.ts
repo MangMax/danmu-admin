@@ -32,12 +32,13 @@ export default defineNuxtConfig({
     otherServer: process.env.NUXT_OTHER_SERVER || "https://api.danmu.icu",
     vodServer: process.env.NUXT_VOD_SERVER || "https://www.caiji.cyou",
     bilibiliCookie: process.env.NUXT_BILIBILI_COOKIE || "",
+    youkuConcurrency: Math.min(parseInt(process.env.NUXT_YOUKU_CONCURRENCY || "8"), 16),
     requestTimeout: parseInt(process.env.NUXT_REQUEST_TIMEOUT || "30000"),
     maxRetryCount: parseInt(process.env.NUXT_MAX_RETRY_COUNT || "3"),
 
     // Public keys (exposed to client-side)
     public: {
-      version: "1.0.4",
+      version: "1.1.0",
       allowedPlatforms: ["qiyi", "bilibili1", "imgo", "youku", "qq"],
       maxLogs: parseInt(process.env.NUXT_PUBLIC_MAX_LOGS || "500"),
       maxAnimes: parseInt(process.env.NUXT_PUBLIC_MAX_ANIMES || "100"),
