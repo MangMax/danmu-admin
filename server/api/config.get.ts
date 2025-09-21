@@ -12,17 +12,12 @@ export default defineEventHandler(async (_event) => {
   try {
     logger.info('Fetching system configuration');
 
-    // 获取调试信息
-    const debugInfo = await config.getDebugInfo();
-
-    // 获取生产环境优化配置
-    const optimizations = await config.getProductionOptimizations();
-
-    // 获取当前配置（隐藏敏感信息）
+    // 获取当前配置
     const currentConfig = await config.get();
     const isTokenAuthEnabled = await config.isTokenAuthEnabled();
 
-    const safeConfig = {
+    // 返回扁平结构，与前端期望的格式一致
+    const response = {
       version: currentConfig.version,
       runtime: currentConfig.runtime,
       nodeEnv: currentConfig.nodeEnv,
@@ -32,34 +27,17 @@ export default defineEventHandler(async (_event) => {
       requestTimeout: currentConfig.requestTimeout,
       maxRetryCount: currentConfig.maxRetryCount,
       youkuConcurrency: currentConfig.youkuConcurrency,
-      // Token 认证状态
-      tokenAuthEnabled: isTokenAuthEnabled,
-      hasToken: !!currentConfig.token,
-      tokenLength: currentConfig.token?.length || 0,
-      // 服务器配置
-      hasOtherServer: !!currentConfig.otherServer,
-      hasVodServer: !!currentConfig.vodServer,
-      hasBilibiliCookie: !!currentConfig.bilibiliCookie,
-      bilibiliCookieLength: currentConfig.bilibiliCookie?.length || 0
-    };
-
-    const response = {
-      success: true,
-      timestamp: new Date().toISOString(),
-      config: safeConfig,
-      debug: debugInfo,
-      optimizations,
-      environment: {
-        platform: process.platform || 'unknown',
-        nodeVersion: process.version || 'unknown',
-        arch: process.arch || 'unknown',
-        uptime: process.uptime ? Math.floor(process.uptime()) : 0
-      }
+      // Token 认证状态 - 适配前端显示
+      tokenAuth: isTokenAuthEnabled ? "enabled" : "disabled",
+      // 服务器配置状态
+      hasCustomOtherServer: currentConfig.otherServer !== "https://api.danmu.icu",
+      hasCustomVodServer: currentConfig.vodServer !== "https://www.caiji.cyou",
+      hasBilibiliCookie: !!currentConfig.bilibiliCookie
     };
 
     logger.debug('Configuration retrieved successfully', {
       runtime: currentConfig.runtime,
-      hasCustomToken: currentConfig.token !== "87654321"
+      tokenAuth: response.tokenAuth
     });
 
     return response;
@@ -68,11 +46,7 @@ export default defineEventHandler(async (_event) => {
 
     throw createError({
       statusCode: 500,
-      statusMessage: 'Failed to retrieve configuration',
-      data: {
-        error: error.message,
-        timestamp: new Date().toISOString()
-      }
+      statusMessage: 'Failed to retrieve configuration'
     });
   }
 });
