@@ -31,11 +31,11 @@
 - [x] **🆕 环境配置管理** - 跨平台环境适配
 - [x] **🆕 工具函数库** - URL转换, 字符串处理, 时间格式化
 
-### ✅ 新完成模块 (25%)
+### ✅ 新完成模块 (100%)
 - [x] **🆕 搜索剧集接口** - `/api/v2/search/episodes` 
 - [x] **🆕 完整API路由系统** - 所有核心接口已实现
 - [x] **🆕 统一错误处理** - 标准化错误响应格式
-- [x] **🆕 认证和鉴权** - Token验证机制
+- [x] **🆕 Token认证中间件** - 完整的Token验证机制 🔥
 
 ## 🗺️ 详细实施计划
 
@@ -146,7 +146,9 @@
 
 #### 3.2 辅助API路由
 - [x] `GET /api/logs` - 日志查看接口 ✅
-- [x] 认证和鉴权中间件 ✅
+- [x] `GET /api/config` - 系统配置接口 🆕
+- [x] `GET /api/index` - 首页信息接口 🆕
+- [x] Token认证中间件 ✅ 🔥
 - [x] 错误处理中间件 ✅
 
 ### 阶段四：错误处理和响应优化 (优先级：🔷 中)
@@ -264,7 +266,35 @@ danmu-admin/
 **创建时间**: 2025-09-18  
 **最后更新**: 2025-09-21  
 
-## 🔄 最新更新 (v1.1.0)
+## 🔄 最新更新 (v1.2.0)
+
+### 2025-09-21 可选Token认证系统完成 🔥🆕
+
+#### ✅ 重大功能改进
+1. **可选Token认证系统** 🆕🔥
+   - **开箱即用**: 默认无需任何配置，直接访问所有API
+   - **灵活认证**: 设置 `NUXT_TOKEN` 环境变量后自动启用认证
+   - **智能检测**: 系统自动检测是否设置了token并调整认证策略
+   - **双模式支持**: 
+     - 默认模式: `/api/v2/...` (无认证)
+     - 认证模式: `/{token}/api/v2/...` (需要token)
+   - **动态响应**: 首页和配置接口根据认证状态返回相应信息
+
+2. **新增系统管理接口** 🆕
+   - `GET /api/config` - 系统配置查看（隐藏敏感信息）
+   - `GET /api/index` - 首页信息和API使用说明
+   - 支持调试信息和运行时状态查看
+
+3. **增强的环境配置管理** 🆕
+   - 完整的Token配置支持
+   - 配置验证和默认值处理
+   - 跨平台环境适配（Cloudflare/Vercel/Node）
+
+#### 🔧 技术改进
+- 中间件系统完善，支持CORS和Token认证
+- 统一的错误响应格式
+- 详细的日志记录和调试信息
+- 安全的配置信息展示（隐藏敏感数据）
 
 ### 2025-09-21 重要功能更新
 
@@ -311,16 +341,60 @@ danmu-admin/
 - 性能优化：并发请求处理，提升响应速度
 
 #### 📋 配置示例
+
+##### 默认模式（开箱即用，无需配置）
 ```bash
-# 环境变量配置
+# 不设置 NUXT_TOKEN 或设置为空
+# NUXT_TOKEN=
+
+# 其他配置保持不变
 NUXT_BILIBILI_COOKIE="your_bilibili_cookie_here"
 NUXT_OTHER_SERVER="https://api.danmu.icu"
 NUXT_VOD_SERVER="https://www.caiji.cyou"
-NUXT_YOUKU_CONCURRENCY="8"  # 新增：优酷并发数配置 (默认8，最大16)
+NUXT_YOUKU_CONCURRENCY="8"  # 优酷并发数配置 (默认8，最大16)
+```
+
+##### 认证模式（生产环境推荐）
+```bash
+# 设置任意非空字符串启用认证
+NUXT_TOKEN="your_secure_token_2024"  # 🆕 启用认证模式
+
+# 其他配置
+NUXT_BILIBILI_COOKIE="your_bilibili_cookie_here"
+NUXT_OTHER_SERVER="https://api.danmu.icu"
+NUXT_VOD_SERVER="https://www.caiji.cyou"
+NUXT_YOUKU_CONCURRENCY="8"
+```
+
+#### 🔐 API 使用示例
+
+##### 默认模式（无认证）
+```bash
+# 直接访问API，无需token
+curl "https://your-domain.com/api/v2/search/anime?keyword=鬼灭之刃"
+
+# 查看系统配置
+curl "https://your-domain.com/api/config"
+
+# 查看日志
+curl "https://your-domain.com/api/logs"
+```
+
+##### 认证模式（需要token）
+```bash
+# API请求需要包含token
+curl "https://your-domain.com/your_secure_token_2024/api/v2/search/anime?keyword=鬼灭之刃"
+
+# 查看系统配置
+curl "https://your-domain.com/your_secure_token_2024/api/config"
+
+# 查看日志
+curl "https://your-domain.com/your_secure_token_2024/api/logs"
 ```
 
 #### 🎯 兼容性说明
-- 完全向后兼容 v1.0.4
-- 所有现有API接口保持不变
-- 新增功能为可选配置，不影响现有部署
-- 性能提升对用户透明，无需额外配置
+- **开箱即用**: 无需任何配置即可使用，比之前更简单
+- **完全向后兼容**: 支持原有的token认证模式
+- **零配置启动**: 默认模式下无需设置任何环境变量
+- **渐进式安全**: 可根据需要随时启用认证
+- **性能优化**: 默认模式下无认证开销，启动更快

@@ -9,6 +9,7 @@ const logger = useLogger();
 
 // 配置类型定义
 export interface DanmuConfig {
+  token: string;
   otherServer: string;
   vodServer: string;
   bilibiliCookie: string;
@@ -59,6 +60,7 @@ class DanmuConfigManager {
       const nodeEnv = this.getNodeEnv();
 
       this.config = {
+        token: runtimeConfig.token || "", // 空字符串表示不使用token认证
         otherServer: runtimeConfig.otherServer,
         vodServer: runtimeConfig.vodServer,
         bilibiliCookie: runtimeConfig.bilibiliCookie || "",
@@ -93,6 +95,7 @@ class DanmuConfigManager {
    */
   private getFallbackConfig(): DanmuConfig {
     return {
+      token: "", // 默认不使用token认证
       otherServer: "https://api.danmu.icu",
       vodServer: "https://www.caiji.cyou",
       bilibiliCookie: "",
@@ -175,7 +178,11 @@ class DanmuConfigManager {
 
     const errors: string[] = [];
 
-    // Token 验证已禁用
+    // Token 验证 - 空字符串表示不使用认证（允许）
+    // 如果设置了token，则不能为纯空白字符
+    if (this.config.token && this.config.token.trim().length === 0) {
+      errors.push('token cannot be whitespace only, use empty string to disable authentication');
+    }
 
     // 验证服务器 URL
     if (!this.isValidUrl(this.config.otherServer)) {
@@ -224,7 +231,9 @@ class DanmuConfigManager {
       runtime: config.runtime,
       nodeEnv: config.nodeEnv,
       version: config.version,
-      tokenAuth: "disabled",
+      tokenAuth: config.token ? "enabled" : "disabled",
+      hasToken: !!config.token,
+      tokenLength: config.token?.length || 0,
       hasCustomOtherServer: config.otherServer !== "https://api.danmu.icu",
       hasCustomVodServer: config.vodServer !== "https://www.caiji.cyou",
       requestTimeout: config.requestTimeout,
@@ -241,6 +250,14 @@ class DanmuConfigManager {
   public async isPlatformAllowed(platform: string): Promise<boolean> {
     const config = await this.getConfig();
     return config.allowedPlatforms.includes(platform);
+  }
+
+  /**
+   * 检查是否启用了Token认证
+   */
+  public async isTokenAuthEnabled(): Promise<boolean> {
+    const config = await this.getConfig();
+    return !!config.token && config.token.trim().length > 0;
   }
 
   /**
@@ -270,9 +287,10 @@ export const config = {
   getDebugInfo: () => danmuConfig.getDebugInfo(),
   isPlatformAllowed: (platform: string) => danmuConfig.isPlatformAllowed(platform),
   getProductionOptimizations: () => danmuConfig.getProductionOptimizations(),
+  isTokenAuthEnabled: () => danmuConfig.isTokenAuthEnabled(),
 
   // 常用配置的快捷访问器
-  getToken: async () => "", // Token 认证已禁用
+  getToken: async () => (await danmuConfig.getConfig()).token,
   getOtherServer: async () => (await danmuConfig.getConfig()).otherServer,
   getVodServer: async () => (await danmuConfig.getConfig()).vodServer,
   getBilibiliCookie: async () => (await danmuConfig.getConfig()).bilibiliCookie,
@@ -290,7 +308,7 @@ export const config = {
 // 同步版本的便捷方法（使用缓存的配置）
 export const configSync = {
   get: () => danmuConfig.getConfigSync(),
-  getToken: () => "", // Token 认证已禁用
+  getToken: () => danmuConfig.getConfigSync()?.token,
   getOtherServer: () => danmuConfig.getConfigSync()?.otherServer,
   getVodServer: () => danmuConfig.getConfigSync()?.vodServer,
   getBilibiliCookie: () => danmuConfig.getConfigSync()?.bilibiliCookie,

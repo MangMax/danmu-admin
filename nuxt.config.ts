@@ -29,6 +29,7 @@ export default defineNuxtConfig({
   // Runtime 配置 - 支持环境变量
   runtimeConfig: {
     // Private keys (only available on server-side)
+    token: process.env.NUXT_TOKEN || "", // API访问令牌，空字符串表示不启用认证
     otherServer: process.env.NUXT_OTHER_SERVER || "https://api.danmu.icu",
     vodServer: process.env.NUXT_VOD_SERVER || "https://www.caiji.cyou",
     bilibiliCookie: process.env.NUXT_BILIBILI_COOKIE || "",
