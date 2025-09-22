@@ -19,10 +19,7 @@ export default defineNuxtConfig({
       }
     }
   },
-  modules: [
-    '@unocss/nuxt',
-    'shadcn-nuxt',
-  ],
+  modules: ['@unocss/nuxt', 'shadcn-nuxt', "nuxt-auth-utils"],
   shadcn: {
     componentDir: './app/components/ui'
   },
@@ -36,6 +33,9 @@ export default defineNuxtConfig({
     youkuConcurrency: Math.min(parseInt(process.env.NUXT_YOUKU_CONCURRENCY || "8"), 16),
     requestTimeout: parseInt(process.env.NUXT_REQUEST_TIMEOUT || "30000"),
     maxRetryCount: parseInt(process.env.NUXT_MAX_RETRY_COUNT || "3"),
+    // 认证配置
+    authUsername: process.env.NUXT_AUTH_USERNAME || "",
+    authPassword: process.env.NUXT_AUTH_PASSWORD || "",
 
     // Public keys (exposed to client-side)
     public: {

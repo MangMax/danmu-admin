@@ -6,53 +6,6 @@
 
 import useLogger from '~~/server/composables/useLogger';
 
-// 直接从 es-toolkit 导出常用工具，供其他模块使用
-export {
-  // Array utilities
-  chunk,
-  uniq,
-  difference,
-  intersection,
-  union,
-
-  // Object utilities
-  pick,
-  omit,
-  merge,
-  isEqual,
-  isNil,
-  cloneDeep,
-
-  // String utilities
-  camelCase,
-  snakeCase,
-  kebabCase,
-  pascalCase,
-  trim,
-  trimStart,
-  trimEnd,
-  capitalize,
-  upperFirst,
-  lowerFirst,
-  escape,
-
-  // Function utilities
-  debounce,
-  throttle,
-  identity,
-  noop,
-  memoize,
-
-  // Math utilities
-  clamp,
-  sum,
-  mean,
-  random,
-  inRange,
-
-  // Predicate utilities - 使用兼容层
-  // isEmpty, isArray, isString, isNumber, isObject 在 compat 版本中可用
-} from 'es-toolkit';
 
 const logger = useLogger();
 

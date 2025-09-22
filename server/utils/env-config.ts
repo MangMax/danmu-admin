@@ -20,6 +20,9 @@ export interface DanmuConfig {
   maxRetryCount: number;
   maxLogs: number;
   maxAnimes: number;
+  // 认证配置
+  authUsername: string;
+  authPassword: string;
   // 运行时环境信息
   runtime: 'cloudflare' | 'vercel' | 'node' | 'nitro' | 'unknown';
   nodeEnv: 'development' | 'production' | 'test';
@@ -71,6 +74,8 @@ class DanmuConfigManager {
         maxRetryCount: runtimeConfig.maxRetryCount,
         maxLogs: runtimeConfig.public.maxLogs,
         maxAnimes: runtimeConfig.public.maxAnimes,
+        authUsername: runtimeConfig.authUsername || "",
+        authPassword: runtimeConfig.authPassword || "",
         runtime,
         nodeEnv
       };
@@ -106,6 +111,8 @@ class DanmuConfigManager {
       maxRetryCount: 3,
       maxLogs: 500,
       maxAnimes: 100,
+      authUsername: "",
+      authPassword: "",
       runtime: this.detectRuntime(),
       nodeEnv: this.getNodeEnv()
     };
@@ -115,12 +122,6 @@ class DanmuConfigManager {
    * 检测运行时环境
    */
   private detectRuntime(): DanmuConfig['runtime'] {
-    // Nitro/Nuxt 环境检测
-    if (typeof (globalThis as any).__nitro__ !== 'undefined' ||
-      typeof (globalThis as any).$fetch !== 'undefined') {
-      return 'nitro';
-    }
-
     // Cloudflare Workers 环境检测
     if (typeof globalThis.caches !== 'undefined' &&
       typeof globalThis.Request !== 'undefined' &&
@@ -138,6 +139,12 @@ class DanmuConfigManager {
     if (typeof process !== 'undefined' &&
       process.versions?.node) {
       return 'node';
+    }
+
+    // Nitro/Nuxt 环境检测
+    if (typeof (globalThis as any).__nitro__ !== 'undefined' ||
+      typeof (globalThis as any).$fetch !== 'undefined') {
+      return 'nitro';
     }
 
     return 'unknown';
@@ -261,6 +268,16 @@ class DanmuConfigManager {
   }
 
   /**
+   * 检查是否启用了密码认证
+   */
+  public async isPasswordAuthEnabled(): Promise<boolean> {
+    const config = await this.getConfig();
+    return !!(config.authUsername && config.authPassword &&
+      config.authUsername.trim().length > 0 &&
+      config.authPassword.trim().length > 0);
+  }
+
+  /**
    * 获取生产环境优化配置
    */
   public async getProductionOptimizations(): Promise<object> {
@@ -288,9 +305,12 @@ export const config = {
   isPlatformAllowed: (platform: string) => danmuConfig.isPlatformAllowed(platform),
   getProductionOptimizations: () => danmuConfig.getProductionOptimizations(),
   isTokenAuthEnabled: () => danmuConfig.isTokenAuthEnabled(),
+  isPasswordAuthEnabled: () => danmuConfig.isPasswordAuthEnabled(),
 
   // 常用配置的快捷访问器
   getToken: async () => (await danmuConfig.getConfig()).token,
+  getAuthUsername: async () => (await danmuConfig.getConfig()).authUsername,
+  getAuthPassword: async () => (await danmuConfig.getConfig()).authPassword,
   getOtherServer: async () => (await danmuConfig.getConfig()).otherServer,
   getVodServer: async () => (await danmuConfig.getConfig()).vodServer,
   getBilibiliCookie: async () => (await danmuConfig.getConfig()).bilibiliCookie,

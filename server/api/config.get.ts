@@ -15,6 +15,7 @@ export default defineEventHandler(async (_event) => {
     // 获取当前配置
     const currentConfig = await config.get();
     const isTokenAuthEnabled = await config.isTokenAuthEnabled();
+    const isPasswordAuthEnabled = await config.isPasswordAuthEnabled();
 
     // 返回扁平结构，与前端期望的格式一致
     const response = {
@@ -27,8 +28,9 @@ export default defineEventHandler(async (_event) => {
       requestTimeout: currentConfig.requestTimeout,
       maxRetryCount: currentConfig.maxRetryCount,
       youkuConcurrency: currentConfig.youkuConcurrency,
-      // Token 认证状态 - 适配前端显示
+      // 认证状态 - 适配前端显示
       tokenAuth: isTokenAuthEnabled ? "enabled" : "disabled",
+      passwordAuth: isPasswordAuthEnabled ? "enabled" : "disabled",
       // 服务器配置状态
       hasCustomOtherServer: currentConfig.otherServer !== "https://api.danmu.icu",
       hasCustomVodServer: currentConfig.vodServer !== "https://www.caiji.cyou",

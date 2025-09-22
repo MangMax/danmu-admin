@@ -10,6 +10,20 @@
           </div>
           <div class="flex items-center gap-4">
             <Badge variant="secondary" class="text-sm">Danmu Admin v2.0</Badge>
+            <!-- 认证状态显示 -->
+            <div v-if="isLoggedIn" class="flex items-center gap-2">
+              <Badge variant="outline" class="text-sm">
+                欢迎，{{ user?.username }}
+              </Badge>
+              <Button variant="outline" size="sm" @click="handleLogout" :disabled="loading">
+                {{ loading ? '登出中...' : '登出' }}
+              </Button>
+            </div>
+            <div v-else-if="passwordAuthEnabled" class="flex items-center gap-2">
+              <Button variant="default" size="sm" @click="navigateToLogin">
+                登录
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -83,7 +97,45 @@
 
 <script setup>
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+// 认证状态
+const { user, isLoggedIn, loading, logout, checkAuth } = useAuth()
+
+// 配置状态
+const config = ref(null)
+const passwordAuthEnabled = ref(false)
+
+// 检查认证状态
+onMounted(async () => {
+  await checkAuth()
+  await fetchConfig()
+})
+
+// 获取配置信息
+const fetchConfig = async () => {
+  try {
+    const response = await $fetch('/api/config')
+    config.value = response
+    passwordAuthEnabled.value = response.passwordAuth === 'enabled'
+  } catch (error) {
+    console.error('Failed to fetch config:', error)
+  }
+}
+
+// 处理登出
+const handleLogout = async () => {
+  const result = await logout()
+  if (result.success) {
+    await navigateTo('/login')
+  }
+}
+
+// 导航到登录页面
+const navigateToLogin = () => {
+  navigateTo('/login')
+}
 
 // 设置页面标题
 useHead({
