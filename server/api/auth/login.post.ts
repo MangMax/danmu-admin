@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
     const configPassword = await config.getAuthPassword();
 
     // 验证凭据
-    if (username !== configUsername || password !== configPassword) {
+    if (username.toString() !== configUsername.toString() || password.toString() !== configPassword.toString()) {
       logger.warn('Failed login attempt', { username });
       throw createError({
         statusCode: 401,
