@@ -63,12 +63,15 @@ export default defineEventHandler(async (event) => {
  */
 async function performAuthentication(event: any, url: URL) {
   try {
+
+    const isTokenAuthEnabled = await config.isTokenAuthEnabled();
+
     // 1. 检查密码认证
     const isPasswordAuthEnabled = await config.isPasswordAuthEnabled();
     if (isPasswordAuthEnabled) {
       const session = await getUserSession(event);
 
-      if (!session?.user) {
+      if (!session?.user && !url.pathname.includes('/api/v2')) {
         logger.warn('Password auth required but no session found', {
           url: url.pathname
         });
@@ -77,10 +80,12 @@ async function performAuthentication(event: any, url: URL) {
           statusCode: 401,
           statusMessage: 'Authentication required'
         });
+      } else if (url.pathname.includes('/api/v2') && isTokenAuthEnabled) {
+        await validateTokenAuth(event, url);
       }
 
       logger.debug('Password authentication successful', {
-        username: session.user.username,
+        username: session.user?.username,
         path: url.pathname
       });
 
@@ -88,7 +93,6 @@ async function performAuthentication(event: any, url: URL) {
     }
 
     // 2. 检查 Token 认证
-    const isTokenAuthEnabled = await config.isTokenAuthEnabled();
     if (isTokenAuthEnabled) {
       await validateTokenAuth(event, url);
     }
