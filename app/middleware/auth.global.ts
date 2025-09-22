@@ -4,7 +4,6 @@
  */
 
 export default defineNuxtRouteMiddleware(async (to) => {
-  console.log('Auth middleware', to)
   // 跳过登录页面
   if (to.path === '/login') {
     return

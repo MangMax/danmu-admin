@@ -1,71 +1,63 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8">
-      <div>
-        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          登录到弹幕管理系统
-        </h2>
-        <p class="mt-2 text-center text-sm text-gray-600">
-          请输入您的用户名和密码
-        </p>
-      </div>
+  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <Card class="w-full max-w-md">
+      <CardHeader class="flex flex-col gap-1 items-center text-center">
+        <CardTitle class="text-2xl font-bold tracking-tight">
+          弹幕管理系统
+        </CardTitle>
+        <CardDescription>
+          请输入您的用户名和密码登录
+        </CardDescription>
+      </CardHeader>
 
-      <form class="mt-8 space-y-6" @submit.prevent="handleLogin">
-        <div class="rounded-md shadow-sm -space-y-px">
-          <div>
-            <label for="username" class="sr-only">用户名</label>
-            <input id="username" v-model="form.username" name="username" type="text" required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-              placeholder="用户名" />
+      <CardContent>
+        <form class="flex flex-col gap-4" @submit.prevent="handleLogin">
+          <div class="flex flex-col gap-2">
+            <Label for="username">用户名</Label>
+            <Input id="username" v-model="form.username" type="text" placeholder="请输入用户名" required :disabled="loading"
+              @input="clearError" />
           </div>
-          <div>
-            <label for="password" class="sr-only">密码</label>
-            <input id="password" v-model="form.password" name="password" type="password" required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-              placeholder="密码" />
-          </div>
-        </div>
 
-        <div v-if="error" class="rounded-md bg-red-50 p-4">
-          <div class="flex">
-            <div class="flex-shrink-0">
-              <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clip-rule="evenodd" />
-              </svg>
-            </div>
-            <div class="ml-3">
-              <h3 class="text-sm font-medium text-red-800">
-                {{ error }}
-              </h3>
+          <div class="flex flex-col gap-2">
+            <Label for="password">密码</Label>
+            <div class="relative">
+              <Input id="password" v-model="form.password" :type="showPassword ? 'text' : 'password'"
+                placeholder="请输入密码" required :disabled="loading" class="pr-10" @input="clearError" />
+              <Button type="button" variant="ghost" size="sm"
+                class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" @click="togglePasswordVisibility"
+                :disabled="loading">
+                <component :is="showPassword ? EyeOffIcon : EyeIcon" class="h-4 w-4 text-muted-foreground" />
+              </Button>
             </div>
           </div>
-        </div>
 
-        <div>
-          <button type="submit" :disabled="loading"
-            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
-            <span v-if="loading" class="absolute left-0 inset-y-0 flex items-center pl-3">
-              <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
-                viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                </path>
-              </svg>
-            </span>
+          <Alert v-if="error" variant="destructive" class="mt-4">
+            <AlertCircleIcon class="h-4 w-4" />
+            <AlertTitle>登录失败</AlertTitle>
+            <AlertDescription>
+              {{ error }}
+            </AlertDescription>
+          </Alert>
+
+          <Button type="submit" class="w-full mt-6" :disabled="loading || !form.username || !form.password">
+            <Loader2Icon v-if="loading" class="mr-2 h-4 w-4 animate-spin" />
             {{ loading ? '登录中...' : '登录' }}
-          </button>
-        </div>
-      </form>
-    </div>
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { EyeIcon, EyeOffIcon, AlertCircleIcon, Loader2Icon } from 'lucide-vue-next'
 
 // 页面元信息
 definePageMeta({
@@ -84,17 +76,26 @@ const form = ref({
 // 状态
 const loading = ref(false)
 const error = ref('')
+const showPassword = ref(false)
+
+// 切换密码可见性
+const togglePasswordVisibility = () => {
+  showPassword.value = !showPassword.value
+}
+
+// 清除错误信息
+const clearError = () => {
+  if (error.value) {
+    error.value = ''
+  }
+}
 
 // 检查是否已经登录
 onMounted(async () => {
-  try {
-    const response = await $fetch('/api/auth/me')
-    if (response?.success) {
-      // 已经登录，重定向到首页
-      await router.push('/')
-    }
-  } catch (err) {
-    // 未登录，继续显示登录页面
+  const { loggedIn } = useUserSession()
+  if (loggedIn.value) {
+    // 已经登录，重定向到首页
+    await router.push('/')
   }
 })
 
@@ -106,7 +107,14 @@ const handleLogin = async () => {
   error.value = ''
 
   try {
-    const response = await $fetch('/api/auth/login', {
+    const response = await $fetch<{
+      success: boolean;
+      message: string;
+      user?: {
+        username: string;
+        loginTime: string;
+      };
+    }>('/api/auth/login', {
       method: 'POST',
       body: {
         username: form.value.username,
@@ -115,6 +123,7 @@ const handleLogin = async () => {
     })
 
     if (response.success) {
+      console.log('Login successful')
       // 登录成功，重定向到首页
       await router.push('/')
     } else {
@@ -122,7 +131,7 @@ const handleLogin = async () => {
     }
   } catch (err: any) {
     console.error('Login error:', err)
-    error.value = err.data?.message || err.statusMessage || '登录失败，请检查用户名和密码'
+    error.value = err?.statusMessage || err?.message || '登录失败，请检查用户名和密码'
   } finally {
     loading.value = false
   }
