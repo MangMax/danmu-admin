@@ -61,7 +61,7 @@ import { EyeIcon, EyeOffIcon, AlertCircleIcon, Loader2Icon } from 'lucide-vue-ne
 
 // 页面元信息
 definePageMeta({
-  layout: false,
+  layout: 'auth',
   auth: false // 登录页面不需要认证
 })
 
@@ -77,6 +77,7 @@ const form = ref({
 const loading = ref(false)
 const error = ref('')
 const showPassword = ref(false)
+const { loggedIn, fetch: fetchUserSession } = useUserSession()
 
 // 切换密码可见性
 const togglePasswordVisibility = () => {
@@ -92,7 +93,6 @@ const clearError = () => {
 
 // 检查是否已经登录
 onMounted(async () => {
-  const { loggedIn } = useUserSession()
   if (loggedIn.value) {
     // 已经登录，重定向到首页
     await router.push('/')
@@ -124,6 +124,7 @@ const handleLogin = async () => {
 
     if (response.success) {
       console.log('Login successful')
+      await fetchUserSession()
       // 登录成功，重定向到首页
       await router.push('/')
     } else {

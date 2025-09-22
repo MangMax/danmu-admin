@@ -1,10 +1,5 @@
 <template>
-  <div>
+  <NuxtLayout>
     <NuxtPage />
-    <Toaster />
-  </div>
+  </NuxtLayout>
 </template>
-
-<script setup>
-import { Toaster } from '@/components/ui/sonner'
-</script>
