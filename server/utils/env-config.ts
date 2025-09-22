@@ -273,8 +273,8 @@ class DanmuConfigManager {
   public async isPasswordAuthEnabled(): Promise<boolean> {
     const config = await this.getConfig();
     return !!(config.authUsername && config.authPassword &&
-      config.authUsername.trim().length > 0 &&
-      config.authPassword.trim().length > 0);
+      config.authUsername?.trim().length > 0 &&
+      config.authPassword?.trim().length > 0);
   }
 
   /**
