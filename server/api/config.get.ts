@@ -10,7 +10,12 @@ const logger = useLogger();
 
 export default defineEventHandler(async (_event) => {
   try {
+    const { authUsername, authPassword } = useRuntimeConfig();
     logger.info('Fetching system configuration');
+    logger.info('Password auth enabled:', {
+      authUsername: authUsername,
+      authPassword: authPassword
+    });
 
     // 获取当前配置
     const currentConfig = await config.get();
