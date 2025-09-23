@@ -4,6 +4,7 @@
  * Body: { fileName: "动漫名称 S01E01" }
  */
 import useLogger from '~~/server/composables/useLogger';
+import { getBangumiDetails } from '~~/server/utils/bangumi-utils';
 
 const logger = useLogger();
 
@@ -61,16 +62,21 @@ export default defineEventHandler(async (event) => {
     if (season && episode) {
       // 遍历搜索结果寻找匹配的动漫
       for (const anime of searchResults) {
-        if (anime.animeTitle.includes(title) && event.node.req.url) {
-          const bangumiData = await $fetch(`/api/v2/bangumi/${anime.bangumiId}`)
-          logger.debug("判断剧集", bangumiData);
-          if (bangumiData.bangumi.episodes.length >= episode) {
-            // 先判断season
-            if (matchSeason(anime, title, season)) {
-              resEpisode = bangumiData.bangumi.episodes[episode - 1];
-              resAnime = anime;
-              break;
+        if (anime.animeTitle.includes(title)) {
+          try {
+            const bangumiData = await getBangumiDetails(anime.animeId);
+            logger.debug("判断剧集", bangumiData);
+            if (bangumiData.episodes.length >= episode) {
+              // 先判断season
+              if (matchSeason(anime, title, season)) {
+                resEpisode = bangumiData.episodes[episode - 1];
+                resAnime = anime;
+                break;
+              }
             }
+          } catch (error) {
+            logger.warn(`Failed to get bangumi details for animeId ${anime.animeId}:`, error);
+            continue;
           }
         }
       }
@@ -80,12 +86,17 @@ export default defineEventHandler(async (event) => {
       for (const anime of searchResults) {
         const animeTitle = anime.animeTitle.split("(")[0].trim();
         if (animeTitle === title) {
-          const bangumiData = await $fetch(`/api/v2/bangumi/${anime.bangumiId}`);
-          logger.debug("判断电影", bangumiData);
-          if (bangumiData.bangumi.episodes.length > 0) {
-            resEpisode = bangumiData.bangumi.episodes[0];
-            resAnime = anime;
-            break;
+          try {
+            const bangumiData = await getBangumiDetails(anime.animeId);
+            logger.debug("判断电影", bangumiData);
+            if (bangumiData.episodes.length > 0) {
+              resEpisode = bangumiData.episodes[0];
+              resAnime = anime;
+              break;
+            }
+          } catch (error) {
+            logger.warn(`Failed to get bangumi details for animeId ${anime.animeId}:`, error);
+            continue;
           }
         }
       }
@@ -94,12 +105,17 @@ export default defineEventHandler(async (event) => {
     // 如果都没有找到则返回第一个
     if (!resAnime) {
       for (const anime of searchResults) {
-        const bangumiData = await $fetch(`/api/v2/bangumi/${anime.bangumiId}`);
-        logger.debug("判断电影", bangumiData);
-        if (bangumiData.bangumi.episodes.length > 0) {
-          resEpisode = bangumiData.bangumi.episodes[0];
-          resAnime = anime;
-          break;
+        try {
+          const bangumiData = await getBangumiDetails(anime.animeId);
+          logger.debug("判断电影", bangumiData);
+          if (bangumiData.episodes.length > 0) {
+            resEpisode = bangumiData.episodes[0];
+            resAnime = anime;
+            break;
+          }
+        } catch (error) {
+          logger.warn(`Failed to get bangumi details for animeId ${anime.animeId}:`, error);
+          continue;
         }
       }
     }

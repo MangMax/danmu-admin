@@ -51,6 +51,9 @@ export default defineEventHandler(async (event) => {
       }
     });
 
+    const session = await getUserSession(event)
+    logger.info('session', session);
+
     logger.info('User logged in successfully', { username: configUsername });
 
     return {
