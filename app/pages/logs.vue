@@ -18,8 +18,6 @@
 </template>
 
 <script setup>
-import { Card, CardContent } from '@/components/ui/card'
-
 // 设置页面标题
 useHead({
   title: '系统日志 - 弹幕API管理中心',

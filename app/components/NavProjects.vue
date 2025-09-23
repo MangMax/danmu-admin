@@ -9,13 +9,6 @@ import {
 } from "lucide-vue-next"
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   useSidebar,
 } from "@/components/ui/sidebar"
 

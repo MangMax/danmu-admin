@@ -73,10 +73,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { toast } from 'vue-sonner'
 
 // 获取缓存统计信息

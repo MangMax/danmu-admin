@@ -5,20 +5,6 @@ import {
 } from "lucide-vue-next"
 
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
@@ -50,7 +36,7 @@ const handleLogout = async () => {
           <SidebarMenuButton size="lg"
             class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
             <Avatar class="h-8 w-8 rounded-lg">
-              <AvatarImage :src="user.avatar" :alt="user.name" />
+              <AvatarImage v-if="user.avatar && user.avatar !== ''" :src="user.avatar" :alt="user.name" />
               <AvatarFallback class="rounded-lg">
                 {{ user.name.slice(0, 1).toUpperCase() }}
               </AvatarFallback>
@@ -67,7 +53,7 @@ const handleLogout = async () => {
           <DropdownMenuLabel class="p-0 font-normal">
             <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               <Avatar class="h-8 w-8 rounded-lg">
-                <AvatarImage :src="user.avatar" :alt="user.name" />
+                <AvatarImage v-if="user.avatar && user.avatar !== ''" :src="user.avatar" :alt="user.name" />
                 <AvatarFallback class="rounded-lg">
                   {{ user.name.slice(0, 1).toUpperCase() }}
                 </AvatarFallback>

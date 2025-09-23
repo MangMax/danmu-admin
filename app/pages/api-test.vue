@@ -33,8 +33,6 @@
 </template>
 
 <script setup>
-import { Card, CardContent } from '@/components/ui/card'
-
 // 设置页面标题
 useHead({
   title: '接口测试 - 弹幕API管理中心',

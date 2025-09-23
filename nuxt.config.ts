@@ -19,10 +19,19 @@ export default defineNuxtConfig({
       }
     }
   },
-  modules: ['@unocss/nuxt', 'shadcn-nuxt', "nuxt-auth-utils"],
-  shadcn: {
-    componentDir: './app/components/ui'
+  modules: ['@unocss/nuxt', "nuxt-auth-utils"],
+  components: {
+    "dirs": [
+      {
+        "path": "~/components/ui",
+        extensions: ['.vue']
+      },
+      '~/components'
+    ]
   },
+  // shadcn: {
+  //   componentDir: './app/components/ui'
+  // },
   // Runtime 配置 - 支持环境变量
   runtimeConfig: {
     // Private keys (only available on server-side)

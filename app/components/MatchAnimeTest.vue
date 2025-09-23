@@ -169,15 +169,6 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-
 const examples = [
   '进击的巨人 S01E01',
   '鬼灭之刃 第1集',

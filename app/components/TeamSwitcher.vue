@@ -3,15 +3,6 @@ import type { Component } from "vue"
 
 import { ChevronsUpDown, Plus } from "lucide-vue-next"
 import { ref } from "vue"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 import {
   useSidebar,

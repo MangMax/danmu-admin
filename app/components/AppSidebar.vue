@@ -7,10 +7,6 @@ import {
   Activity,
   FileClock,
 } from "lucide-vue-next"
-import NavMain from "@/components/NavMain.vue"
-import NavProjects from "./NavProjects.vue"
-import NavUser from "@/components/NavUser.vue"
-import TeamSwitcher from "@/components/TeamSwitcher.vue"
 
 const props = withDefaults(defineProps<SidebarProps>(), {
   collapsible: "icon",
@@ -22,7 +18,7 @@ const { data: config } = await useFetch('/api/config')
 const data = computed(() => ({
   user: {
     name: user.value?.username || "",
-    avatar: "/avatars/shadcn.jpg",
+    avatar: "",
   },
   teams: [
     {

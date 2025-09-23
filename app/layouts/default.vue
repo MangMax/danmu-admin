@@ -15,16 +15,11 @@
         </div>
       </SidebarInset>
     </SidebarProvider>
-    <Toaster />
+    <Sonner />
   </div>
 </template>
 
 <script setup>
-import { Toaster } from '@/components/ui/sonner'
-
-// 认证状态
-const { logout } = useAuth()
-
 // 配置状态
 const config = ref(null)
 const passwordAuthEnabled = ref(false)
@@ -42,26 +37,6 @@ const fetchConfig = async () => {
     passwordAuthEnabled.value = response.passwordAuth === 'enabled'
   } catch (error) {
     console.error('Failed to fetch config:', error)
-  }
-}
-
-// 导航到登录页面
-const navigateToLogin = () => {
-  navigateTo('/login')
-}
-
-// 获取页面标题
-const getPageTitle = () => {
-  const route = useRoute()
-  switch (route.path) {
-    case '/':
-      return '系统概览'
-    case '/api-test':
-      return '接口测试'
-    case '/logs':
-      return '系统日志'
-    default:
-      return '弹幕API管理中心'
   }
 }
 </script>

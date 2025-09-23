@@ -1,10 +1,9 @@
 <template>
   <div>
     <slot />
-    <Toaster />
+    <Sonner />
   </div>
 </template>
 
 <script setup>
-import { Toaster } from '@/components/ui/sonner'
 </script>
