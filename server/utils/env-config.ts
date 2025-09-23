@@ -63,7 +63,7 @@ class DanmuConfigManager {
       const nodeEnv = this.getNodeEnv();
 
       this.config = {
-        token: runtimeConfig.token || "", // 空字符串表示不使用token认证
+        token: runtimeConfig.token?.toString() || "", // 空字符串表示不使用token认证
         otherServer: runtimeConfig.otherServer,
         vodServer: runtimeConfig.vodServer,
         bilibiliCookie: runtimeConfig.bilibiliCookie || "",
@@ -187,7 +187,7 @@ class DanmuConfigManager {
 
     // Token 验证 - 空字符串表示不使用认证（允许）
     // 如果设置了token，则不能为纯空白字符
-    if (this.config.token && this.config.token.trim().length === 0) {
+    if (this.config.token && this.config.token.toString().trim().length === 0) {
       errors.push('token cannot be whitespace only, use empty string to disable authentication');
     }
 
@@ -264,7 +264,7 @@ class DanmuConfigManager {
    */
   public async isTokenAuthEnabled(): Promise<boolean> {
     const config = await this.getConfig();
-    return !!config.token && config.token.trim().length > 0;
+    return !!config.token && config.token.toString().trim().length > 0;
   }
 
   /**
