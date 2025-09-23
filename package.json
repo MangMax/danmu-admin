@@ -1,5 +1,9 @@
 {
-  "name": "nuxt-app",
+  "name": "danmu-admin",
+  "version": "1.1.1",
+  "description": "Danmu Admin",
+  "author": "MangMax",
+  "license": "MIT",
   "type": "module",
   "private": true,
   "scripts": {

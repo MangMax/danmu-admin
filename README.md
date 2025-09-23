@@ -2,7 +2,8 @@
 
 基于 Nuxt 3 构建的现代化弹幕API管理系统，支持多平台弹幕获取和管理。
 
-> **⚠️ 重要说明**: 本项目所有核心代码均来自 [danmu_api](https://github.com/your-repo/danmu_api)，仅用于练习 Nuxt 相关技术栈。不建议用于生产环境部署。
+> **⚠️ 重要说明**: 本项目所有核心代码均来自 [danmu_api](https://github.com/huangxd-/danmu_api)，仅用于练习 Nuxt 相关技术栈。不建议用于生产环境部署。
+如有任何侵权行为，请联系本人删除。
 
 ## 🚨 部署前必读
 
@@ -12,8 +13,9 @@
 2. **性能差异** - 性能不会比原项目更好，仅针对 Nuxt 框架做了特殊适配
 3. **维护限制** - 所有核心特性均来自 danmu_api，不保证长期维护和更新
 4. **学习目的** - 本项目主要用于学习 Nuxt 3、TypeScript 等现代前端技术栈
+5. **项目性质** - 由于原项目本质是以即时获取弹幕为主，所以本项目也不会增加持久化相关的任何功能，你只会收获一个用处不大的看板界面。
 
-**建议**: 如需稳定的生产环境，请直接使用原版 [danmu_api](https://github.com/your-repo/danmu_api)。
+**建议**: 如需稳定的生产环境，请直接使用原版 [danmu_api](https://github.com/huangxd-/danmu_api)。
 
 ## ✨ 特性
 
@@ -24,11 +26,18 @@
 - 🔒 **类型安全** - 完整的 TypeScript 支持
 - 🔄 **完全兼容** - 与原有弹幕API系统100%兼容
 
+[deploy-on-vercel-button-image]: https://vercel.com/button
+[deploy-on-vercel-link]: https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FMangMax%2Fdanmu-admin&env=NUXT_TOKEN&envDescription=For%20safety,%20please%20set%20up%20a%20token&project-name=danmu-admin&repository-name=danmu-admin
+[deploy-on-netlify-button-image]: https://www.netlify.com/img/deploy/button.svg
+[deploy-on-netlify-link]: https://app.netlify.com/start/deploy?repository=https://github.com/MangMax/danmu-admin
+[deploy-on-cloudflare-pages-button-image]: https://deploy.workers.cloudflare.com/button
+[deploy-on-cloudflare-pages-link]: https://deploy.workers.cloudflare.com/?url=https://github.com/MangMax/danmu-admin
+
 ## 🚀 快速开始
 
 ### 1. 克隆项目
 ```bash
-git clone https://github.com/your-repo/danmu-admin.git
+git clone https://github.com/MangMax/danmu-admin.git
 cd danmu-admin
 ```
 
@@ -43,11 +52,6 @@ pnpm dev
 ```
 
 访问 [http://localhost:3000](http://localhost:3000) 即可使用！
-
-## 📖 详细文档
-
-- [兼容性说明](./DANMU_COMPATIBILITY.md) - 与原系统的兼容性保证
-- [配置迁移指南](./CONFIG_MIGRATION.md) - 详细的配置系统说明
 
 ## ⚙️ 配置说明
 
@@ -87,136 +91,55 @@ GET  /api/test/config-validation   # 配置验证测试
 POST /api/test/add-sample-data     # 添加测试数据
 ```
 
-## 📦 部署方式
+## 🌏 自托管
 
-### 1. Docker 部署
+本项目提供了 Vercel、Netlify、Cloudflare Pages、Docker 镜像等多种部署方式，可以让你在几分钟内部署自己的弹幕API管理系统。
 
-#### 构建镜像
+### `A` 使用 Vercel, Netlify, Cloudflare Pages 等Serverless平台部署
+
+#### 使用 Vercel, Netlify, Cloudflare Pages 等Serverless平台部署，你可以自行部署到其他平台，目前主流平台都已支持Nuxt一键部署，注意Edgeone还不支持全栈Nuxt。
+
+如果你想要在 Vercel, Netlify, Cloudflare Pages 等Serverless平台部署这个服务，你可以按照以下步骤：
+
+- Fork 这个项目，我强烈建议你先fork这个项目，在你fork之后，只保留上游同步动作，并禁用其他动作在你的 GitHub 仓库上。
+- 点击下面的按钮开始部署: 直接使用你的 GitHub 账号登录，并在环境变量中填写 `NUXT_TOKEN` (推荐)。
+- 部署完成后，你可以开始使用它。
+- 绑定一个自定义域名 (可选): Vercel 分配的域名的 DNS 在一些地区会被污染; 绑定一个自定义域名可以直连(推荐)。
+
+<div align="center">
+
+|           在Vercel部署            |                    在Netlify部署                      |                    在Cloudflare Pages部署                      |
+| :-------------------------------------: | :---------------------------------------------------------: | :---------------------------------------------------------: |
+| [![][deploy-on-vercel-button-image]][deploy-on-vercel-link] | [![][deploy-on-netlify-button-image]][deploy-on-netlify-link] | [![][deploy-on-cloudflare-pages-button-image]][deploy-on-cloudflare-pages-link] |
+</div>
+
+### `B` 使用 Docker 部署
+
+#### 使用 Docker 部署
+
+如果你想要使用 Docker 部署这个服务，你可以按照以下步骤：
+
+1. 拉取 Docker 镜像
 ```bash
-# 构建 Docker 镜像
-docker build -t danmu-admin .
-
-# 运行容器
-docker run -d \
-  --name danmu-admin \
-  -p 3000:3000 \
-  -e NUXT_OTHER_SERVER=https://api.danmu.icu \
-  -e NUXT_VOD_SERVER=https://www.caiji.cyou \
-  danmu-admin
+docker pull mangmax/danmu-admin:latest
 ```
-
-#### Docker Compose
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  danmu-admin:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - NUXT_OTHER_SERVER=https://api.danmu.icu
-      - NUXT_VOD_SERVER=https://www.caiji.cyou
-      - NUXT_BILIBILI_COOKIE=""
-      - NUXT_YOUKU_CONCURRENCY=8
-    restart: unless-stopped
-```
-
+2. 运行 Docker 容器
 ```bash
-# 启动服务
-docker-compose up -d
+docker run -d --name danmu-admin -p 3000:3000 mangmax/danmu-admin:latest
 ```
 
-### 2. Vercel 部署
-
-#### 一键部署
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-repo/danmu-admin)
-
-#### 手动部署
+如果需要设置令牌，可以在运行容器时设置 `NUXT_TOKEN` 环境变量。
 ```bash
-# 安装 Vercel CLI
-npm i -g vercel
-
-# 登录 Vercel
-vercel login
-
-# 部署
-vercel --prod
-
-# 设置环境变量
-vercel env add NUXT_OTHER_SERVER
-vercel env add NUXT_VOD_SERVER
-vercel env add NUXT_BILIBILI_COOKIE
-vercel env add NUXT_YOUKU_CONCURRENCY
+docker run -d --name danmu-admin -p 3000:3000 -e NUXT_TOKEN=your_token_here mangmax/danmu-admin:latest
 ```
 
-### 3. Netlify 部署
+3. 访问 [http://localhost:3000](http://localhost:3000) 即可使用！
 
-#### 一键部署
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/your-repo/danmu-admin)
+<br/>
 
-#### 手动部署
-```bash
-# 安装 Netlify CLI
-npm install -g netlify-cli
+## 🔧 环境变量配置
 
-# 构建项目
-pnpm build
-
-# 部署
-netlify deploy --prod --dir=.output/public
-
-# 设置环境变量（在 Netlify 控制台）
-# Site settings > Environment variables
-```
-
-#### netlify.toml 配置
-```toml
-[build]
-  command = "pnpm build"
-  publish = ".output/public"
-
-[build.environment]
-  NODE_VERSION = "18"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-```
-
-### 4. Cloudflare Pages 部署
-
-#### 一键部署
-[![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/your-repo/danmu-admin)
-
-#### 手动部署
-```bash
-# 安装 Wrangler CLI
-npm install -g wrangler
-
-# 登录 Cloudflare
-wrangler login
-
-# 构建项目
-pnpm build
-
-# 部署到 Cloudflare Pages
-wrangler pages deploy .output/public --project-name=danmu-admin
-```
-
-#### wrangler.toml 配置
-```toml
-name = "danmu-admin"
-compatibility_date = "2024-01-01"
-
-[env.production]
-vars = { NUXT_OTHER_SERVER = "https://api.danmu.icu" }
-```
-
-### 环境变量配置
-
-所有部署方式都需要配置以下环境变量：
+所有环境变量如下，都是可选的：
 
 #### 核心服务配置
 | 变量名 | 默认值 | 说明 |
@@ -261,9 +184,25 @@ pnpm build
 pnpm preview
 ```
 
-## 🤝 贡献
+## 🤝 感谢
 
-欢迎提交 Issue 和 Pull Request！
+感谢 [danmu_api](https://github.com/huangxd-/danmu_api) 开源！
+
+## 技术栈
+
+如果你对本项目感兴趣，可以查看以下技术栈：
+- Nuxt 3
+- TypeScript
+- Vite
+- Vue
+- Unocss
+- Shadcn Nuxt
+- VueUse
+- ES Toolkit
+- Crypto JS
+- Crypto TS
+- Iconv Lite
+- nuxt-auth-utils
 
 ## 📄 许可证
 
