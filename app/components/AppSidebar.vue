@@ -35,7 +35,7 @@ const data = {
     {
       name: "Varlog-Danmu",
       logo: GalleryVerticalEnd,
-      plan: "v1.0.0",
+      plan: "v1.1.1",
     },
   ],
   navMain: [

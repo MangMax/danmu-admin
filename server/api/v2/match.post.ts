@@ -55,44 +55,57 @@ export default defineEventHandler(async (event) => {
       return createMatchResponse(false, []);
     }
 
-    let resAnime: any = null;
-    let resEpisode: any = null;
+    let resAnime: AnimeSearchResult | null = null;
+    let resEpisode: Episode | null = null;
 
-    // 遍历搜索结果寻找匹配的动漫
-    for (const anime of searchResults) {
-      if (anime.animeTitle.includes(title)) {
-        // 检查季度匹配
-        if (season && !matchSeason(anime, title, season)) {
-          continue;
+    if (season && episode) {
+      // 遍历搜索结果寻找匹配的动漫
+      for (const anime of searchResults) {
+        if (anime.animeTitle.includes(title) && event.node.req.url) {
+          const bangumiData = await $fetch(`/api/v2/bangumi/${anime.bangumiId}`)
+          logger.debug("判断剧集", bangumiData);
+          if (bangumiData.bangumi.episodes.length >= episode) {
+            // 先判断season
+            if (matchSeason(anime, title, season)) {
+              resEpisode = bangumiData.bangumi.episodes[episode - 1];
+              resAnime = anime;
+              break;
+            }
+          }
         }
+      }
+    }
+    else {
+      // 判断电影
+      for (const anime of searchResults) {
+        const animeTitle = anime.animeTitle.split("(")[0].trim();
+        if (animeTitle === title) {
+          const bangumiData = await $fetch(`/api/v2/bangumi/${anime.bangumiId}`);
+          logger.debug("判断电影", bangumiData);
+          if (bangumiData.bangumi.episodes.length > 0) {
+            resEpisode = bangumiData.bangumi.episodes[0];
+            resAnime = anime;
+            break;
+          }
+        }
+      }
+    }
 
-        // 创建虚拟的集数信息（在实际应用中应该从 bangumi 端点获取）
-        const episodeCount = anime.episodeCount || 1;
-        const targetEpisode = episode || 1;
-
-        if (targetEpisode <= episodeCount) {
+    // 如果都没有找到则返回第一个
+    if (!resAnime) {
+      for (const anime of searchResults) {
+        const bangumiData = await $fetch(`/api/v2/bangumi/${anime.bangumiId}`);
+        logger.debug("判断电影", bangumiData);
+        if (bangumiData.bangumi.episodes.length > 0) {
+          resEpisode = bangumiData.bangumi.episodes[0];
           resAnime = anime;
-          resEpisode = {
-            episodeId: anime.animeId + targetEpisode,
-            episodeTitle: `第${targetEpisode}集`,
-            episodeNumber: targetEpisode.toString()
-          };
-          break;
-        } else if (!episode && episodeCount > 0) {
-          // 如果没有指定集数，返回第一集
-          resAnime = anime;
-          resEpisode = {
-            episodeId: anime.animeId + 1,
-            episodeTitle: '第1集',
-            episodeNumber: '1'
-          };
           break;
         }
       }
     }
 
     let isMatched = false;
-    let matches: any[] = [];
+    let matches: MatchResult[] = [];
 
     if (resEpisode && resAnime) {
       isMatched = true;
