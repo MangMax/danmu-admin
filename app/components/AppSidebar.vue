@@ -25,17 +25,18 @@ const props = withDefaults(defineProps<SidebarProps>(), {
 })
 
 const { user } = useUserSession()
+const { data: config } = await useFetch('/api/config')
 
-const data = {
+const data = computed(() => ({
   user: {
     name: user.value?.username || "",
     avatar: "/avatars/shadcn.jpg",
   },
   teams: [
     {
-      name: "Varlog-Danmu",
+      name: "Logvar-Danmu",
       logo: GalleryVerticalEnd,
-      plan: "v1.1.1",
+      plan: `v${config.value?.version}`,
     },
   ],
   navMain: [
@@ -60,7 +61,7 @@ const data = {
   ],
   projects: [
   ],
-}
+}))
 </script>
 
 <template>
@@ -72,7 +73,7 @@ const data = {
       <NavMain :items="data.navMain" />
       <NavProjects v-if="data.projects.length > 0" :projects="data.projects" />
     </SidebarContent>
-    <SidebarFooter>
+    <SidebarFooter v-if="config?.passwordAuth === 'enabled'">
       <NavUser :user="data.user" />
     </SidebarFooter>
     <SidebarRail />

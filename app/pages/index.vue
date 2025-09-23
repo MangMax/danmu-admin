@@ -25,7 +25,7 @@
         <div class="text-center text-sm text-muted-foreground">
           <p>弹幕API服务器 - 支持多平台弹幕获取</p>
           <p class="mt-1">
-            <a href="https://github.com/huangxd-/danmu_api.git" target="_blank" class="text-primary hover:underline">
+            <a href="https://github.com/MangMax/danmu-admin" target="_blank" class="text-primary hover:underline">
               GitHub Repository
             </a>
           </p>

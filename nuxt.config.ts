@@ -39,7 +39,7 @@ export default defineNuxtConfig({
 
     // Public keys (exposed to client-side)
     public: {
-      version: "1.1.0",
+      version: "1.1.1",
       allowedPlatforms: ["qiyi", "bilibili1", "imgo", "youku", "qq"],
       maxLogs: parseInt(process.env.NUXT_PUBLIC_MAX_LOGS || "500"),
       maxAnimes: parseInt(process.env.NUXT_PUBLIC_MAX_ANIMES || "100"),
