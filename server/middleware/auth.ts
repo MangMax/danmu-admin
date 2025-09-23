@@ -59,47 +59,79 @@ export default defineEventHandler(async (event) => {
 
 /**
  * 执行认证检查
- * 优先检查密码认证，然后检查 Token 认证
+ * /api/v2 接口：密码认证优先，没有密码认证时可以使用令牌认证
+ * 其他接口：只要密码认证通过就行，与令牌无关
  */
 async function performAuthentication(event: any, url: URL) {
   try {
-
-    const isTokenAuthEnabled = await config.isTokenAuthEnabled();
-
-    // 1. 检查密码认证
     const isPasswordAuthEnabled = await config.isPasswordAuthEnabled();
+    const isTokenAuthEnabled = await config.isTokenAuthEnabled();
+    const isV2Api = url.pathname.includes('/api/v2');
+
+    // 如果两种认证都未启用，直接通过
+    if (!isPasswordAuthEnabled && !isTokenAuthEnabled) {
+      logger.debug('No authentication required', { path: url.pathname });
+      return;
+    }
+
+    // 检查密码认证状态
+    let hasValidSession = false;
     if (isPasswordAuthEnabled) {
       const session = await getUserSession(event);
+      hasValidSession = !!session?.user;
 
-      if (!session?.user && !url.pathname.includes('/api/v2')) {
-        logger.warn('Password auth required but no session found', {
+      if (hasValidSession) {
+        logger.debug('Password authentication successful', {
+          username: session.user?.username,
+          path: url.pathname
+        });
+      }
+    }
+
+    // 处理 /api/v2 接口的认证逻辑
+    if (isV2Api) {
+      // 对于 v2 接口：如果有密码认证且已登录，直接通过
+      if (isPasswordAuthEnabled && hasValidSession) {
+        return;
+      }
+
+      // 如果没有密码认证或未登录，但开启了令牌认证，则检查令牌
+      if (isTokenAuthEnabled) {
+        await validateTokenAuth(event, url);
+        return;
+      }
+
+      // 如果开启了密码认证但未登录，且没有令牌认证，则拒绝访问
+      if (isPasswordAuthEnabled && !hasValidSession) {
+        logger.warn('V2 API access denied: password auth enabled but no session found', {
           url: url.pathname
         });
-
         throw createError({
           statusCode: 401,
           statusMessage: 'Authentication required'
         });
-      } else if (url.pathname.includes('/api/v2') && isTokenAuthEnabled) {
-        await validateTokenAuth(event, url);
+      }
+    } else {
+      // 处理其他接口的认证逻辑：只检查密码认证
+      if (isPasswordAuthEnabled) {
+        if (!hasValidSession) {
+          logger.warn('Password auth required but no session found', {
+            url: url.pathname
+          });
+          throw createError({
+            statusCode: 401,
+            statusMessage: 'Authentication required'
+          });
+        }
+        // 密码认证通过，直接返回，不检查令牌
+        return;
       }
 
-      logger.debug('Password authentication successful', {
-        username: session.user?.username,
-        path: url.pathname
-      });
-
-      return; // 密码认证成功，不需要检查 Token
-    }
-
-    // 2. 检查 Token 认证
-    if (isTokenAuthEnabled) {
-      await validateTokenAuth(event, url);
-    }
-
-    // 3. 如果两种认证都未启用，直接通过
-    if (!isPasswordAuthEnabled && !isTokenAuthEnabled) {
-      logger.debug('No authentication required', { path: url.pathname });
+      // 如果没有开启密码认证但开启了令牌认证，则检查令牌
+      if (isTokenAuthEnabled) {
+        await validateTokenAuth(event, url);
+        return;
+      }
     }
 
   } catch (error: any) {
