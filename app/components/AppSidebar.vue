@@ -12,14 +12,6 @@ import NavProjects from "./NavProjects.vue"
 import NavUser from "@/components/NavUser.vue"
 import TeamSwitcher from "@/components/TeamSwitcher.vue"
 
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
-} from "@/components/ui/sidebar"
-
 const props = withDefaults(defineProps<SidebarProps>(), {
   collapsible: "icon",
 })
