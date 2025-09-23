@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { PrimitiveProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import type { SidebarMenuButtonVariants } from "./core"
+import type { SidebarMenuButtonVariants } from "~/components/ui/sidebar/core"
 import { Primitive } from "reka-ui"
 import { cn } from "@/lib/utils"
-import { sidebarMenuButtonVariants } from "./core"
+import { sidebarMenuButtonVariants } from "~/components/ui/sidebar/core"
 
 export interface SidebarMenuButtonProps extends PrimitiveProps {
   variant?: SidebarMenuButtonVariants["variant"]

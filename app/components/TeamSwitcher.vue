@@ -6,7 +6,7 @@ import { ref } from "vue"
 
 import {
   useSidebar,
-} from "~/components/ui/sidebar/core"
+} from "@/components/ui/sidebar/core"
 
 const props = defineProps<{
   teams: {

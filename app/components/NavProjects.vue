@@ -10,7 +10,7 @@ import {
 
 import {
   useSidebar,
-} from "~/components/ui/sidebar/core"
+} from "@/components/ui/sidebar/core"
 
 defineProps<{
   projects: {
