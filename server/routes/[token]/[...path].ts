@@ -1,6 +1,6 @@
 /**
  * Token 路径处理器
- * 处理格式如 /12345666/api/v2/match 的请求
+ * 支持格式如 /12345666/api/v2/match 和 /12345666/match 的请求
  * 重定向到 /api/v2/match?token=12345666
  */
 
@@ -24,14 +24,38 @@ export default defineEventHandler(async (event) => {
     // 解析路径
     const pathParts = Array.isArray(pathArray) ? pathArray : pathArray.split('/').filter(Boolean);
 
-    // 检查是否是 API 路径：token/api/v2/...
-    if (pathParts.length >= 2 && pathParts[0] === 'api' && pathParts[1] === 'v2') {
-      const actualApiPath = '/' + pathParts.join('/');
+    if (pathParts.length === 0) {
+      logger.warn('Invalid token path format', {
+        token: token.substring(0, 4) + '***',
+        reason: 'Missing path segments'
+      });
+
+      throw createError({
+        statusCode: 404,
+        statusMessage: 'Invalid API path format'
+      });
+    }
+
+    const isApiV2Path = pathParts.length >= 2 && pathParts[0] === 'api' && pathParts[1] === 'v2';
+    let actualApiPath: string | null = null;
+    let redirectType: 'prefixed' | 'short' | null = null;
+
+    if (isApiV2Path) {
+      actualApiPath = '/' + pathParts.join('/');
+      redirectType = 'prefixed';
+    } else if (pathParts[0] !== 'api') {
+      actualApiPath = '/api/v2/' + pathParts.join('/');
+      redirectType = 'short';
+    }
+
+    if (actualApiPath) {
+      const originalPath = '/' + [token, ...pathParts].join('/');
 
       logger.info('Token route redirect', {
-        originalPath: `/${token}${actualApiPath}`,
+        originalPath,
         token: token.substring(0, 4) + '***',
-        actualPath: actualApiPath
+        actualPath: actualApiPath,
+        redirectType
       });
 
       // 获取现有的查询参数
@@ -55,18 +79,18 @@ export default defineEventHandler(async (event) => {
       const redirectUrl = queryString ? `${actualApiPath}?${queryString}` : actualApiPath;
 
       logger.info('Redirecting to', {
-        from: `/${token}${actualApiPath}`,
+        from: originalPath,
         to: redirectUrl
       });
 
       // 执行重定向
       return sendRedirect(event, redirectUrl, 302);
-
     } else {
       // 不是 API 路径，返回 404
       logger.warn('Invalid token path format', {
         token: token.substring(0, 4) + '***',
-        path: pathParts.join('/')
+        path: pathParts.join('/'),
+        reason: 'Unsupported API prefix'
       });
 
       throw createError({
