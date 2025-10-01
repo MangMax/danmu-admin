@@ -105,7 +105,7 @@ class DanmuConfigManager {
       vodServer: "https://www.caiji.cyou",
       bilibiliCookie: "",
       youkuConcurrency: Math.min(8, 16),
-      version: "1.1.1",
+      version: "1.2.0",
       allowedPlatforms: ["qiyi", "bilibili1", "imgo", "youku", "qq"],
       requestTimeout: 30000,
       maxRetryCount: 3,

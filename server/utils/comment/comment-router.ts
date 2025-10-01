@@ -13,6 +13,7 @@ import { fetchTencentVideo } from './tencent';
 import { fetchMangoTV } from './mango';
 import { fetchYouku } from './youku';
 import { fetchRenren } from './renren';
+import { fetchHanjuTV } from './hanjutv';
 import { fetchOtherServerWithRetry } from './other-server';
 
 const logger = useLogger();
@@ -45,9 +46,14 @@ export const PLATFORM_CONFIG = {
     handler: fetchYouku
   },
   renren: {
-    domains: [],  // 人人视频使用特殊的ID格式
-    patterns: [],
+    domains: [/^(https?:\/\/)?([\w.-]+)\.([a-z]{2,})(\/.*)?$/i],  // 人人视频使用特殊的ID格式
+    patterns: [/^\d{6}$/],
     handler: fetchRenren
+  },
+  hanjutv: {
+    domains: [/^(https?:\/\/)?([\w.-]+)\.([a-z]{2,})(\/.*)?$/i],
+    patterns: [/^[a-zA-Z0-9]{21}$/],
+    handler: fetchHanjuTV
   }
 } as const;
 
@@ -59,25 +65,35 @@ export type PlatformName = keyof typeof PLATFORM_CONFIG;
  */
 export function identifyPlatform(url: string): PlatformName | null {
   try {
-    // 首先检查是否为人人视频格式（非标准URL）
+    // 首先检查是否为人人/hanjutv特殊ID（非标准URL）
     const urlPattern = /^(https?:\/\/)?([\w.-]+)\.([a-z]{2,})(\/.*)?$/i;
     if (!urlPattern.test(url)) {
-      logger.info('Detected renren format:', url);
-      return 'renren';
+      // 人人视频纯数字ID
+      if (/^\d+$/.test(url)) {
+        logger.info('Detected renren format:', url);
+        return 'renren';
+      } else {
+        // hanjutv字符串ID
+        logger.info('Detected hanjutv format:', url);
+        return 'hanjutv';
+      }
     }
 
     // 检查其他平台
     for (const [platform, config] of Object.entries(PLATFORM_CONFIG)) {
-      if (platform === 'renren') continue;
+      // if (platform === 'renren' || platform === 'hanjutv') continue;
 
       // 检查域名匹配
-      const domainMatch = config.domains.some(domain => url.includes(domain));
+      const domainMatch = config.domains.some(domain =>
+        typeof domain === 'string' ? url.includes(domain) : domain.test(url)
+      );
+
       if (!domainMatch) continue;
 
       // 检查URL模式匹配
-      if (config.patterns.length === 0) {
-        return platform as PlatformName;
-      }
+      // if (config.patterns.length === 0) {
+      //   return platform as PlatformName;
+      // }
 
       const patternMatch = config.patterns.some(pattern => pattern.test(url));
       if (patternMatch) {
