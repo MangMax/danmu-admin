@@ -11,7 +11,8 @@ export type DanmakuPlatform =
   | 'tencent'
   | 'mango'
   | 'youku'
-  | 'renren';
+  | 'renren'
+  | 'hanjutv';
 
 /**
  * 平台配置

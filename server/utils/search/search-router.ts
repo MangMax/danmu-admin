@@ -9,6 +9,7 @@ import { utils } from '../string-utils';
 import { search360Animes } from './360kan-search';
 import { searchVodAnimes } from './vod-search';
 import { searchRenrenAnimes, getEpisodes } from './renren-search';
+import { hanjutvSearch, getHanjutvEpisodes } from './hanjutv-search';
 import type {
   SearchProvider,
   SearchRequest,
@@ -34,7 +35,7 @@ export interface SearchConfig {
  * 默认搜索配置
  */
 const DEFAULT_SEARCH_CONFIG: SearchConfig = {
-  providers: ['360kan', 'vod', 'renren'],
+  providers: ['360kan', 'vod', 'renren', 'hanjutv'],
   maxResults: 50,
   timeout: 10000,
   enableCache: true,
@@ -133,6 +134,10 @@ async function searchFromProvider(
       // 人人视频需要特殊处理：先搜索，然后转换格式
       return await searchAndTransformRenren(keyword, episodeInfo, options);
 
+    case 'hanjutv':
+      // 韩剧TV需要特殊处理：先搜索，然后转换格式
+      return await searchAndTransformHanjutv(keyword, episodeInfo, options);
+
     default:
       logger.warn(`未知的搜索提供商: ${provider}`);
       return [];
@@ -202,6 +207,80 @@ async function searchAndTransformRenren(
 
   } catch (error) {
     logger.error(`人人视频搜索和转换失败: ${error}`);
+    return [];
+  }
+}
+
+/**
+ * 搜索韩剧TV并转换为统一格式
+ */
+async function searchAndTransformHanjutv(
+  keyword: string,
+  _episodeInfo?: EpisodeInfo,
+  _options: SearchOptions = {}
+): Promise<AnimeSearchResult[]> {
+  // 类别映射
+  const cateMap: Record<string | number, string> = {1: "韩剧", 2: "综艺", 3: "电影", 5: "美剧"};
+  function getCategory(key?: string | number): string {
+    if (key === undefined) return "其他";
+    return cateMap[key] || "其他";
+  }
+
+  try {
+    // 获取韩剧TV搜索结果
+    const results = await hanjutvSearch(keyword);
+    logger.info(`韩剧TV搜索结果: ${results.length} 个`);
+
+    const transformedResults: AnimeSearchResult[] = [];
+
+    // 过滤并转换每个结果
+    const filteredResults = results.filter(s => s.name.includes(keyword));
+
+    for (const anime of filteredResults) {
+      try {
+        // 获取详情和集数信息
+        const detail = await import('./hanjutv-search').then(mod => mod.getHanjutvDetail(anime.sid));
+        const eps = await getHanjutvEpisodes(anime.sid);
+        logger.debug(`获取到 ${eps.length} 集信息，sid: ${anime.sid}`);
+
+        // 构建 links
+        const links = [];
+        for (const ep of eps) {
+          const epTitle = ep.title && ep.title.trim() !== "" ? `第${ep.serialNo}集：${ep.title}` : `第${ep.serialNo}集`;
+          links.push({
+            name: ep.title,
+            url: ep.pid,
+            title: `【hanjutv】${anime.name}(${new Date(anime.updateTime).getFullYear()}) #${epTitle}#`
+          });
+        } 
+
+        if (links.length > 0 && detail) {
+          const transformedAnime: AnimeSearchResult = {
+            provider: 'hanjutv',
+            animeId: anime.animeId,
+            bangumiId: String(anime.animeId),
+            animeTitle: `${anime.name}(${new Date(anime.updateTime).getFullYear()})`,
+            type: `${getCategory(detail.category)} - hanjutv`,
+            typeDescription: `${getCategory(detail.category)} - hanjutv`,
+            imageUrl: anime.image?.thumb || '',
+            startDate: `${new Date(anime.updateTime).getFullYear()}-01-01T00:00:00`,
+            episodeCount: links.length,
+            rating: detail.rank || 0,
+            isFavorited: true,
+            links: links
+          };
+          transformedResults.push(transformedAnime);
+        }
+      } catch (error) {
+        logger.warn(`处理韩剧TV结果失败 (${anime.sid}): ${error}`);
+      }
+    }
+
+    logger.info(`韩剧TV转换完成: ${transformedResults.length} 个有效结果`);
+    return transformedResults;
+
+  } catch (error) {
+    logger.error(`韩剧TV搜索和转换失败: ${error}`);
     return [];
   }
 }

@@ -5,7 +5,7 @@
 /**
  * 搜索提供商
  */
-export type SearchProvider = '360kan' | 'vod' | 'renren';
+export type SearchProvider = '360kan' | 'vod' | 'renren' | 'hanjutv';
 
 /**
  * 播放链接
