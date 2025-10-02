@@ -65,9 +65,9 @@ async function fetchHanjutvEpisodeDanmu(sid: string): Promise<HanjutvDanmakuItem
 function formatHanjutvComments(items: HanjutvDanmakuItem[]): DanmakuJson[] {
   return items.map(c => ({
     cid: Number(c.did),
-    p: `${c.t.toFixed(2)},${c.tp},${Number(c.sc)},[hanjutv]`,
+    p: `${(c.t / 1000).toFixed(2)},${c.tp},${Number(c.sc)},[hanjutv]`,
     m: c.con,
-    t: c.t
+    t: Math.round(c.t / 1000)
   }));
 }
 
@@ -78,19 +78,19 @@ function formatHanjutvComments(items: HanjutvDanmakuItem[]): DanmakuJson[] {
  */
 export async function fetchHanjuTV(pid: string): Promise<DanmakuJson[]> {
   logger.info('开始获取韩剧TV弹幕:', pid);
-  
+
   try {
     const raw = await fetchHanjutvEpisodeDanmu(pid);
     logger.info(`原始弹幕 ${raw.length} 条，正在规范化`);
-    
+
     const formatted = formatHanjutvComments(raw);
     logger.info(`弹幕处理完成，共 ${formatted.length} 条`);
-    
+
     // 输出前五条弹幕用于调试
     if (formatted.length > 0) {
       logger.info('Top 5 danmus:', JSON.stringify(formatted.slice(0, 5), null, 2));
     }
-    
+
     return formatted;
   } catch (error) {
     logger.error('获取韩剧TV弹幕失败:', error);
